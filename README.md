@@ -4,6 +4,7 @@ Venda is a mixed codebase with:
 
 - An iOS SwiftUI app in `Venda/`
 - A Node.js + TypeScript backend in `Backend/`
+- Project docs in `docs/`
 
 ## Repo Setup
 
@@ -33,3 +34,4 @@ If you prefer running Postgres yourself, see `Backend/README.md`.
 
 - The backend initializes its PostgreSQL schema on startup.
 - The iOS app currently points at a hosted API URL in the networking layer.
+- The main project documentation lives in `docs/README.md`.

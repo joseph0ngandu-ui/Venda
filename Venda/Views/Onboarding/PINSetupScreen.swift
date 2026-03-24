@@ -1,7 +1,7 @@
 import SwiftUI
 
 struct PINSetupScreen: View {
-    var onComplete: (String) -> Void
+    var onComplete: (String) async -> String?
     var onBack: () -> Void
 
     @State private var firstPin: String? = nil
@@ -9,6 +9,7 @@ struct PINSetupScreen: View {
     @State private var currentStepSubtitle = "You'll use this to log in and approve discounts."
     @State private var showError = false
     @State private var pinPadId = UUID()
+    @State private var isSubmitting = false
 
     var body: some View {
         ZStack {
@@ -54,6 +55,13 @@ struct PINSetupScreen: View {
                 )
                 .id(pinPadId)
                 .modifier(ShakeEffect(animatableData: showError ? 1 : 0))
+                .disabled(isSubmitting)
+
+                if isSubmitting {
+                    ProgressView("Creating your workspace...")
+                        .tint(.vendaForest)
+                        .padding(.top, 24)
+                }
 
                 Spacer()
             }
@@ -64,8 +72,27 @@ struct PINSetupScreen: View {
     private func handlePinEntry(_ pin: String) {
         if let existing = firstPin {
             if pin == existing {
-                // Success
-                onComplete(pin)
+                isSubmitting = true
+                Task {
+                    let submissionError = await onComplete(pin)
+                    isSubmitting = false
+
+                    if let submissionError {
+                        withAnimation(.spring(response: 0.3, dampingFraction: 0.3)) {
+                            showError = true
+                            currentStepTitle = "We couldn't finish setup"
+                            currentStepSubtitle = submissionError
+                        }
+
+                        DispatchQueue.main.asyncAfter(deadline: .now() + 1.6) {
+                            firstPin = nil
+                            showError = false
+                            currentStepTitle = "Create a 4-digit PIN"
+                            currentStepSubtitle = "You'll use this to log in and approve discounts."
+                            pinPadId = UUID()
+                        }
+                    }
+                }
             } else {
                 // Mismatch
                 withAnimation(.spring(response: 0.3, dampingFraction: 0.3)) {
@@ -113,5 +140,5 @@ struct ShakeEffect: GeometryEffect {
 }
 
 #Preview {
-    PINSetupScreen(onComplete: { _ in }, onBack: {})
+    PINSetupScreen(onComplete: { _ in nil }, onBack: {})
 }

@@ -132,7 +132,9 @@ struct PriceEntrySheet: View {
                             .pickerStyle(.segmented)
                             .padding(.horizontal, 16)
                             .padding(.bottom, 12)
-                            .onChange(of: discountType) { _ in keyboardInput = "" }
+                            .onChange(of: discountType) {
+                                keyboardInput = ""
+                            }
                         }
                     }
                     
@@ -179,7 +181,7 @@ struct PriceEntrySheet: View {
                                 .background(Color.vendaSand)
                                 .cornerRadius(8)
                         }
-                        Text("\(quantity)")
+                        Text(quantity.formatted())
                             .font(.system(size: 18, weight: .semibold, design: .default))
                             .foregroundColor(.vendaInk)
                             .frame(minWidth: 32, alignment: .center)
@@ -201,7 +203,7 @@ struct PriceEntrySheet: View {
                     .padding(.bottom, 20)
                 
                 // Add Button
-                VendaButton(title: "Add \(quantity > 1 ? "\(quantity) " : "")to cart", action: {
+                VendaButton(title: quantity > 1 ? "Add \(quantity.formatted()) to cart" : "Add to cart", action: {
                     onAdd(computedPrice, quantity)
                     isPresented = false
                 })
@@ -209,8 +211,21 @@ struct PriceEntrySheet: View {
                 .padding(.bottom, 32)
             }
             .background(Color.vendaWhite)
-            .cornerRadius(24, corners: [.topLeft, .topRight])
+            .clipShape(TopSheetShape(radius: 24))
         }
+    }
+}
+
+private struct TopSheetShape: Shape {
+    let radius: CGFloat
+
+    func path(in rect: CGRect) -> Path {
+        let path = UIBezierPath(
+            roundedRect: rect,
+            byRoundingCorners: [.topLeft, .topRight],
+            cornerRadii: CGSize(width: radius, height: radius)
+        )
+        return Path(path.cgPath)
     }
 }
 
@@ -277,5 +292,26 @@ private struct CustomNumericKeypad: View {
                 }
             }
         }
+    }
+}
+
+private struct RoundedCorner: Shape {
+    var radius: CGFloat = 0
+    var corners: UIRectCorner = .allCorners
+
+    func path(in rect: CGRect) -> Path {
+        let path = UIBezierPath(
+            roundedRect: rect,
+            byRoundingCorners: corners,
+            cornerRadii: CGSize(width: radius, height: radius)
+        )
+
+        return Path(path.cgPath)
+    }
+}
+
+private extension View {
+    func cornerRadius(_ radius: CGFloat, corners: UIRectCorner) -> some View {
+        clipShape(RoundedCorner(radius: radius, corners: corners))
     }
 }

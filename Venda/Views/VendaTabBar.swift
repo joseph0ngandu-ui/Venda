@@ -27,6 +27,7 @@ struct VendaTabBar: View {
     
     @EnvironmentObject var saleViewModel: SaleViewModel
     @EnvironmentObject var stockViewModel: StockViewModel
+    @EnvironmentObject var moneyViewModel: MoneyViewModel
 
     var body: some View {
         VStack(spacing: 0) {
@@ -38,7 +39,7 @@ struct VendaTabBar: View {
                 case .stock:
                     StockScreen(viewModel: stockViewModel)
                 case .money:
-                    MoneyScreen()
+                    MoneyScreen(viewModel: moneyViewModel)
                 case .more:
                     MoreScreen()
                 }

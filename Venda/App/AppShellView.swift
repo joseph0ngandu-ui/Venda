@@ -7,7 +7,14 @@ struct AppShellView: View {
     var body: some View {
         ZStack {
             Group {
-                if appState.isAuthenticated {
+                if appState.isBootstrapping {
+                    Color.vendaForest
+                        .overlay(
+                            ProgressView("Preparing your workspace...")
+                                .tint(.white)
+                                .foregroundColor(.white)
+                        )
+                } else if appState.isAuthenticated {
                     VendaTabBar()
                         .transition(.opacity)
                 } else {

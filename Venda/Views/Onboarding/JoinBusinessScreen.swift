@@ -1,7 +1,7 @@
 import SwiftUI
 
 struct JoinBusinessScreen: View {
-    var onSuccess: () -> Void
+    var onSubmit: (String, String) async -> String?
     var onBack: () -> Void
     
     @State private var companyCode: String = ""
@@ -47,7 +47,7 @@ struct JoinBusinessScreen: View {
                         label: "Company Code",
                         placeholder: "e.g. VND-5028",
                         text: $companyCode,
-                        autocapitalization: .allCharacters
+                        autocapitalization: .characters
                     )
                     
                     VStack(alignment: .leading, spacing: 8) {
@@ -98,15 +98,16 @@ struct JoinBusinessScreen: View {
     private func handleJoin() {
         isJoining = true
         errorMessage = nil
-        
-        // Mocking network delay
-        DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) {
-            if companyCode.count > 3 && staffPin.count >= 4 {
-                onSuccess()
-            } else {
-                errorMessage = "Invalid company code or PIN."
-                isJoining = false
+
+        Task {
+            let result = await onSubmit(
+                companyCode.trimmingCharacters(in: .whitespacesAndNewlines).uppercased(),
+                staffPin
+            )
+            if let result {
+                errorMessage = result
             }
+            isJoining = false
         }
     }
 }
@@ -141,5 +142,5 @@ private struct FormField: View {
 }
 
 #Preview {
-    JoinBusinessScreen(onSuccess: {}, onBack: {})
+    JoinBusinessScreen(onSubmit: { _, _ in nil }, onBack: {})
 }

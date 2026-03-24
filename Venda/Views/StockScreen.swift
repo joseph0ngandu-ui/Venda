@@ -1,6 +1,7 @@
 import SwiftUI
 
 struct StockScreen: View {
+    @EnvironmentObject var appState: AppState
     @ObservedObject var viewModel: StockViewModel
     @State private var showAddProduct = false
     @State private var selectedProduct: ProductModel?
@@ -30,13 +31,15 @@ struct StockScreen: View {
                             .foregroundColor(.vendaInkMid)
                     }
                     Spacer()
-                    Button(action: { showAddProduct = true }) {
-                        Image(systemName: "plus")
-                            .font(.system(size: 16, weight: .semibold))
-                            .foregroundColor(.white)
-                            .frame(width: 40, height: 40)
-                            .background(Color.vendaForest)
-                            .cornerRadius(10)
+                    if appState.currentUser?.role.isAdminOrManager == true {
+                        Button(action: { showAddProduct = true }) {
+                            Image(systemName: "plus")
+                                .font(.system(size: 16, weight: .semibold))
+                                .foregroundColor(.white)
+                                .frame(width: 40, height: 40)
+                                .background(Color.vendaForest)
+                                .cornerRadius(10)
+                        }
                     }
                 }
                 .padding(.horizontal, 16)
@@ -288,4 +291,5 @@ private struct VendaTextField: View {
         ProductModel(name: "Blow dry", category: "Services", pricingType: .flexible, suggestedPrice: 100),
     ]
     return StockScreen(viewModel: viewModel)
+        .environmentObject(AppState())
 }

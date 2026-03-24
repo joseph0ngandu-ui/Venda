@@ -1,114 +1,111 @@
 import SwiftUI
 
 struct HomeScreen: View {
+    @EnvironmentObject var appState: AppState
     @ObservedObject var viewModel: DashboardViewModel
-    @State private var showLowStockBanner = false
+
+    private var merchantName: String {
+        appState.currentUser?.name ?? "Merchant"
+    }
+
+    private var merchantCode: String {
+        appState.currentUser?.companyCode ?? "VND-0000"
+    }
+
+    private var initials: String {
+        let parts = merchantName.split(separator: " ")
+        let letters = parts.prefix(2).compactMap { $0.first }
+        return letters.isEmpty ? "V" : String(letters)
+    }
 
     var body: some View {
-        ZStack {
-            VStack(spacing: 0) {
-                // Header
-                VStack(spacing: 12) {
-                    HStack {
-                        VStack(alignment: .leading, spacing: 2) {
-                            Text("Good morning,")
-                                .font(.system(size: 13, weight: .regular, design: .default))
-                                .foregroundColor(.white.opacity(0.65))
-                            Text("Woodlands Salon")
-                                .font(.system(size: 22, weight: .semibold, design: .default))
-                                .foregroundColor(.white)
-                        }
-                        Spacer()
-                        Circle()
-                            .fill(Color.vendaForestDk)
-                            .frame(width: 40, height: 40)
-                            .overlay(
-                                Text("WS")
-                                    .font(.system(size: 14, weight: .bold, design: .default))
-                                    .foregroundColor(.white)
-                            )
-                    }
-                    .padding(.horizontal, 16)
-                    .padding(.vertical, 12)
+        ScrollView {
+            VStack(spacing: 18) {
+                ProfileSummaryCard(
+                    initials: initials,
+                    name: merchantName,
+                    subtitle: "Running under \(merchantCode)",
+                    badgeTitle: "Today, live overview"
+                )
+                .padding(.horizontal, 16)
+                .padding(.top, 12)
 
-                    // Stats
-                    HStack(spacing: 12) {
-                        VendaCard(backgroundColor: .vendaForestDk.opacity(0.8), borderColor: .white.opacity(0.2)) {
-                            VStack(alignment: .leading, spacing: 4) {
-                                Text("Today's revenue")
-                                    .font(.system(size: 11, weight: .medium, design: .default))
-                                    .foregroundColor(.white.opacity(0.7))
-                                Text(viewModel.totalRevenue.asZMW())
-                                    .font(.system(size: 18, weight: .semibold, design: .default))
-                                    .foregroundColor(.white)
-                            }
-                            Spacer()
-                        }
+                LazyVGrid(columns: [
+                    GridItem(.flexible(), spacing: 12),
+                    GridItem(.flexible(), spacing: 12)
+                ], spacing: 12) {
+                    ScreenMetricCard(
+                        label: "Today's revenue",
+                        value: viewModel.totalRevenue.asZMW(),
+                        detail: "Across \(viewModel.salesCount) sales",
+                        icon: "banknote",
+                        tint: .vendaForest
+                    )
 
-                        VendaCard(backgroundColor: .vendaForestDk.opacity(0.8), borderColor: .white.opacity(0.2)) {
-                            VStack(alignment: .leading, spacing: 4) {
-                                Text("Sales today")
-                                    .font(.system(size: 11, weight: .medium, design: .default))
-                                    .foregroundColor(.white.opacity(0.7))
-                                Text("\(viewModel.salesCount)")
-                                    .font(.system(size: 18, weight: .semibold, design: .default))
-                                    .foregroundColor(.white)
-                            }
-                            Spacer()
-                        }
-                    }
-                    .padding(.horizontal, 16)
-                    .padding(.bottom, 12)
+                    ScreenMetricCard(
+                        label: "Payments",
+                        value: "\(viewModel.paymentBreakdown.count)",
+                        detail: "Methods in use",
+                        icon: "creditcard",
+                        tint: .vendaOchre
+                    )
                 }
-                .background(Color.vendaForest)
+                .padding(.horizontal, 16)
 
-                // Content
-                ScrollView {
-                    VStack(spacing: 16) {
-                        // Payment breakdown
-                        if !viewModel.paymentBreakdown.isEmpty {
-                            ScrollView(.horizontal, showsIndicators: false) {
-                                HStack(spacing: 8) {
-                                    ForEach(viewModel.paymentBreakdown, id: \.method) { item in
-                                        PaymentBreakdownPill(label: item.method, amount: item.amount)
-                                    }
-                                }
-                                .padding(.horizontal, 16)
-                            }
-                        }
+                VStack(alignment: .leading, spacing: 12) {
+                    ScreenSectionHeader(
+                        title: "Payment mix",
+                        subtitle: "Where today’s money is landing"
+                    )
+                    .padding(.horizontal, 16)
 
-                        // Recent sales
-                        VStack(alignment: .leading, spacing: 12) {
-                            Text("Recent sales")
-                                .font(.system(size: 12, weight: .semibold, design: .default))
-                                .textCase(.uppercase)
-                                .tracking(0.5)
-                                .foregroundColor(.vendaInkLt)
-                                .padding(.horizontal, 16)
-
-                            if viewModel.recentSales.isEmpty {
-                                VStack(spacing: 12) {
-                                    Image(systemName: "cart")
-                                        .font(.system(size: 32, weight: .light))
-                                        .foregroundColor(.vendaInkLt)
-                                    Text("Your sales will appear here")
-                                        .font(.system(size: 14, weight: .medium, design: .default))
-                                        .foregroundColor(.vendaInkMid)
-                                }
-                                .frame(maxWidth: .infinity)
-                                .padding(.vertical, 32)
-                            } else {
-                                ForEach(viewModel.recentSales) { sale in
-                                    SaleRowView(sale: sale)
+                    if viewModel.paymentBreakdown.isEmpty {
+                        EmptyStateCard(
+                            icon: "chart.pie",
+                            title: "No transactions yet",
+                            message: "Once sales come in, we’ll break down cash, mobile money, and credit here."
+                        )
+                        .padding(.horizontal, 16)
+                    } else {
+                        ScrollView(.horizontal, showsIndicators: false) {
+                            HStack(spacing: 8) {
+                                ForEach(viewModel.paymentBreakdown, id: \.method) { item in
+                                    PaymentBreakdownPill(label: item.method, amount: item.amount)
                                 }
                             }
+                            .padding(.horizontal, 16)
                         }
                     }
-                    .padding(.vertical, 16)
                 }
-                .background(Color.vendaSand)
+
+                VStack(alignment: .leading, spacing: 12) {
+                    ScreenSectionHeader(
+                        title: "Recent sales",
+                        subtitle: "The latest activity from the floor"
+                    )
+                    .padding(.horizontal, 16)
+
+                    if viewModel.recentSales.isEmpty {
+                        EmptyStateCard(
+                            icon: "cart",
+                            title: "Sales will appear here",
+                            message: "Your first completed sale will show up in this feed with its reference and payment method."
+                        )
+                        .padding(.horizontal, 16)
+                    } else {
+                        LazyVStack(spacing: 10) {
+                            ForEach(viewModel.recentSales) { sale in
+                                SaleRowView(sale: sale)
+                            }
+                        }
+                        .padding(.horizontal, 16)
+                    }
+                }
+                .padding(.bottom, 24)
             }
         }
+        .background(Color.vendaSand)
+        .scrollIndicators(.hidden)
     }
 }
 
@@ -117,7 +114,7 @@ private struct PaymentBreakdownPill: View {
     let amount: Decimal
 
     var body: some View {
-        VendaCard {
+        VendaCard(accentColor: .vendaOchre) {
             VStack(alignment: .leading, spacing: 4) {
                 Text(label)
                     .font(.system(size: 10, weight: .medium, design: .default))
@@ -134,22 +131,27 @@ private struct SaleRowView: View {
     let sale: SaleSummary
 
     var body: some View {
-        VendaCard {
+        VendaCard(accentColor: .vendaForest) {
             HStack(spacing: 12) {
-                Image(systemName: "scissors")
-                    .font(.system(size: 16, weight: .semibold))
-                    .foregroundColor(.vendaForest)
-                    .frame(width: 36, height: 36)
-                    .background(Color.vendaForestLt)
-                    .cornerRadius(8)
+                Circle()
+                    .fill(Color.vendaForestLt)
+                    .frame(width: 40, height: 40)
+                    .overlay(
+                        Text(String(sale.reference.suffix(2)))
+                            .font(.system(size: 12, weight: .bold, design: .monospaced))
+                            .foregroundColor(.vendaForestDk)
+                    )
 
                 VStack(alignment: .leading, spacing: 2) {
-                    Text("Service")
+                    Text(sale.reference)
                         .font(.system(size: 14, weight: .medium, design: .default))
                         .foregroundColor(.vendaInk)
                     Text(sale.staffName)
                         .font(.system(size: 11, weight: .regular, design: .default))
                         .foregroundColor(.vendaInkMid)
+                    Text(sale.timestamp.asVendaTime())
+                        .font(.system(size: 10, weight: .regular, design: .default))
+                        .foregroundColor(.vendaInkLt)
                 }
 
                 Spacer()

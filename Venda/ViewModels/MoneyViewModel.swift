@@ -1,5 +1,6 @@
 import SwiftUI
 import Combine
+import CoreData
 
 @MainActor
 final class MoneyViewModel: ObservableObject {
@@ -9,10 +10,31 @@ final class MoneyViewModel: ObservableObject {
     @Published var momoTransactions: [MoMoTransactionSummary] = []
     
     @Published var creditEntries: [CreditEntrySummary] = []
+    private let persistence: PersistenceService
+    private var cancellables = Set<AnyCancellable>()
+
+    init(persistence: PersistenceService? = nil) {
+        self.persistence = persistence ?? PersistenceService.shared
+        refreshData()
+        observeChanges()
+    }
     
     func refreshData() {
-        // Will fetch from CoreData in the next step
-        // Leaving arrays empty removes hardcoded mock data from UI
+        let snapshot = persistence.fetchMoneyState()
+        matchedMoMo = snapshot.matchedMoMo
+        pendingMoMo = snapshot.pendingMoMo
+        unmatchedMoMo = snapshot.unmatchedMoMo
+        momoTransactions = snapshot.momoTransactions
+        creditEntries = snapshot.creditEntries
+    }
+
+    private func observeChanges() {
+        NotificationCenter.default.publisher(for: .NSManagedObjectContextDidSave)
+            .receive(on: DispatchQueue.main)
+            .sink { [weak self] _ in
+                self?.refreshData()
+            }
+            .store(in: &cancellables)
     }
 }
 

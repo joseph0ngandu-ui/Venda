@@ -2,11 +2,14 @@ import SwiftUI
 import LocalAuthentication
 
 struct LoginScreen: View {
-    var onComplete: (String) -> Void
+    var onSubmit: (String, String) async -> String?
     var onBack: () -> Void
 
     @State private var showError = false
     @State private var isFaceIDAvailable = false
+    @State private var phone = ""
+    @State private var isSubmitting = false
+    @State private var errorMessage: String?
 
     var body: some View {
         ZStack {
@@ -33,11 +36,34 @@ struct LoginScreen: View {
                         .fontWeight(.semibold)
                         .foregroundColor(.white)
                     
-                    Text("Enter your PIN")
+                    Text("Sign back into your business")
                         .font(.system(size: 15, weight: .regular, design: .default))
                         .foregroundColor(showError ? .vendaEmberLt : .white.opacity(0.8))
                 }
-                .padding(.bottom, 60)
+                .padding(.bottom, 28)
+
+                VStack(alignment: .leading, spacing: 8) {
+                    Text("Phone Number")
+                        .font(.system(size: 12, weight: .semibold, design: .default))
+                        .foregroundColor(.white.opacity(0.7))
+
+                    TextField("260971234567", text: $phone)
+                        .textInputAutocapitalization(.never)
+                        .keyboardType(.phonePad)
+                        .disableAutocorrection(true)
+                        .font(.system(size: 15, weight: .medium, design: .default))
+                        .foregroundColor(.white)
+                        .padding(.horizontal, 16)
+                        .frame(height: 52)
+                        .background(Color.white.opacity(0.12))
+                        .cornerRadius(14)
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 14)
+                                .stroke(Color.white.opacity(0.14), lineWidth: 1)
+                        )
+                }
+                .padding(.horizontal, 24)
+                .padding(.bottom, 24)
 
                 // PIN Pad tailored for Dark Background
                 StaffPINPadDark(
@@ -48,6 +74,27 @@ struct LoginScreen: View {
                     onFaceIDTap: authenticateWithBiometrics
                 )
                 .modifier(ShakeEffect(animatableData: showError ? 1 : 0))
+                .disabled(isSubmitting)
+
+                if let errorMessage {
+                    Text(errorMessage)
+                        .font(.system(size: 13, weight: .medium, design: .default))
+                        .foregroundColor(.vendaEmberLt)
+                        .multilineTextAlignment(.center)
+                        .padding(.horizontal, 24)
+                        .padding(.top, 18)
+                } else if isSubmitting {
+                    ProgressView("Signing in...")
+                        .tint(.white)
+                        .padding(.top, 18)
+                } else {
+                    Text("Use the business phone number linked to your account.")
+                        .font(.system(size: 12, weight: .regular, design: .default))
+                        .foregroundColor(.white.opacity(0.68))
+                        .multilineTextAlignment(.center)
+                        .padding(.horizontal, 24)
+                        .padding(.top, 18)
+                }
 
                 Spacer()
             }
@@ -55,29 +102,28 @@ struct LoginScreen: View {
         .navigationBarHidden(true)
         .onAppear {
             checkBiometricAvailability()
-            
-            // Auto-trigger FaceID on appear if available
-            DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
-                if isFaceIDAvailable {
-                    authenticateWithBiometrics()
-                }
-            }
         }
     }
 
     private func handlePinEntry(_ pin: String) {
-        // Mock PIN check (e.g. 1234)
-        if pin == "1234" {
-            onComplete(pin)
-        } else {
-            withAnimation(.spring(response: 0.3, dampingFraction: 0.3)) {
-                showError = true
-            }
-            let generator = UINotificationFeedbackGenerator()
-            generator.notificationOccurred(.error)
-            
-            DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) {
-                showError = false
+        let normalizedPhone = phone
+            .replacingOccurrences(of: " ", with: "")
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+
+        guard !normalizedPhone.isEmpty else {
+            showValidationError("Enter the business phone number before your PIN.")
+            return
+        }
+
+        isSubmitting = true
+        errorMessage = nil
+
+        Task {
+            let result = await onSubmit(normalizedPhone, pin)
+            isSubmitting = false
+
+            if let result {
+                showValidationError(result)
             }
         }
     }
@@ -98,17 +144,30 @@ struct LoginScreen: View {
         if context.canEvaluatePolicy(.deviceOwnerAuthenticationWithBiometrics, error: &error) {
             let reason = "Unlock Venda to access your business."
 
-            context.evaluatePolicy(.deviceOwnerAuthenticationWithBiometrics, localizedReason: reason) { success, authenticationError in
+            context.evaluatePolicy(.deviceOwnerAuthenticationWithBiometrics, localizedReason: reason) { success, _ in
                 DispatchQueue.main.async {
                     if success {
-                        // Bypass PIN entry on successful biometric auth
-                        onComplete("biometric")
+                        errorMessage = "Biometric login will unlock once this device has a saved session."
                     } else {
-                        // User cancelled or it failed, just let them use PIN
-                        print("Biometric authentication failed")
+                        errorMessage = "Biometric verification was cancelled. You can still sign in with your PIN."
                     }
                 }
             }
+        }
+    }
+
+    private func showValidationError(_ message: String) {
+        errorMessage = message
+
+        withAnimation(.spring(response: 0.3, dampingFraction: 0.3)) {
+            showError = true
+        }
+
+        let generator = UINotificationFeedbackGenerator()
+        generator.notificationOccurred(.error)
+
+        DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) {
+            showError = false
         }
     }
 }
@@ -228,5 +287,5 @@ private struct PINButtonDark: View {
 }
 
 #Preview {
-    LoginScreen(onComplete: { _ in }, onBack: {})
+    LoginScreen(onSubmit: { _, _ in nil }, onBack: {})
 }

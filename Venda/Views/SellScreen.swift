@@ -4,11 +4,10 @@ struct SellScreen: View {
     @ObservedObject var viewModel: SaleViewModel
     @ObservedObject var stockViewModel: StockViewModel
     @State private var showPriceEntry = false
+    @State private var showManualItemSheet = false
     @State private var selectedProduct: ProductModel?
     @State private var showPaymentSelection = false
     @State private var showSaleCompletion = false
-    @State private var enteredPrice: Decimal = 0
-    @State private var quantity: Decimal = 1
     @State private var searchText = ""
 
     private var filteredProducts: [ProductModel] {
@@ -24,56 +23,70 @@ struct SellScreen: View {
                 .ignoresSafeArea()
 
             VStack(spacing: 0) {
-                // Header
-                VStack(spacing: 4) {
-                    HStack {
-                        VStack(alignment: .leading, spacing: 2) {
-                            Text("Point of Sale")
-                                .font(.system(size: 22, weight: .semibold, design: .default))
-                                .foregroundColor(.vendaInk)
-                            Text("\(stockViewModel.products.count) products available")
-                                .font(.system(size: 12, weight: .regular, design: .default))
-                                .foregroundColor(.vendaInkMid)
-                        }
-                        Spacer()
+                VStack(spacing: 14) {
+                    VStack(alignment: .leading, spacing: 8) {
+                        Text("Point of Sale")
+                            .font(.system(size: 24, weight: .semibold, design: .default))
+                            .foregroundColor(.vendaInk)
+                        Text("Search products, sell quickly, and keep the checkout line moving.")
+                            .font(.system(size: 14, weight: .regular, design: .default))
+                            .foregroundColor(.vendaInkMid)
                     }
-                    .padding(.horizontal, 16)
-                    .padding(.top, 12)
-                    .padding(.bottom, 4)
-                }
 
-                // Search bar
-                HStack(spacing: 8) {
-                    Image(systemName: "magnifyingglass")
-                        .font(.system(size: 14, weight: .medium))
-                        .foregroundColor(.vendaInkLt)
-                    TextField("Search products", text: $searchText)
-                        .font(.system(size: 14, weight: .regular, design: .default))
-                        .foregroundColor(.vendaInk)
-                    if !searchText.isEmpty {
-                        Button(action: { searchText = "" }) {
-                            Image(systemName: "xmark.circle.fill")
-                                .font(.system(size: 14))
-                                .foregroundColor(.vendaInkLt)
-                        }
+                    LazyVGrid(columns: [
+                        GridItem(.flexible(), spacing: 12),
+                        GridItem(.flexible(), spacing: 12),
+                        GridItem(.flexible(), spacing: 12)
+                    ], spacing: 12) {
+                        ScreenMetricCard(
+                            label: "Products",
+                            value: "\(stockViewModel.products.count)",
+                            detail: "Ready to sell",
+                            icon: "shippingbox",
+                            tint: .vendaForest
+                        )
+                        ScreenMetricCard(
+                            label: "In cart",
+                            value: "\(viewModel.cartItems.count)",
+                            detail: "Queued items",
+                            icon: "cart",
+                            tint: .vendaOchre
+                        )
+                        ScreenMetricCard(
+                            label: "Checkout",
+                            value: viewModel.cartTotal().asZMW(),
+                            detail: "Current total",
+                            icon: "arrow.right.circle",
+                            tint: .vendaEmber
+                        )
                     }
                 }
-                .padding(.horizontal, 12)
-                .padding(.vertical, 10)
-                .background(Color.vendaWhite)
-                .cornerRadius(10)
-                .overlay(
-                    RoundedRectangle(cornerRadius: 10)
-                        .stroke(Color.vendaLine, lineWidth: 1)
-                )
                 .padding(.horizontal, 16)
-                .padding(.bottom, 12)
+                .padding(.top, 12)
+                .padding(.bottom, 10)
 
-                // Products grid
+                SearchField(text: $searchText, placeholder: "Search products")
+                    .padding(.horizontal, 16)
+                    .padding(.bottom, 12)
+
                 if filteredProducts.isEmpty {
-                    Spacer()
-                    EmptyProductView(hasProducts: !stockViewModel.products.isEmpty)
-                    Spacer()
+                    ScrollView {
+                        VStack(spacing: 14) {
+                            EmptyStateCard(
+                                icon: stockViewModel.products.isEmpty ? "shippingbox" : "magnifyingglass",
+                                title: stockViewModel.products.isEmpty ? "No products ready yet" : "No matching products",
+                                message: stockViewModel.products.isEmpty
+                                    ? "Add products in Stock or create a manual item for walk-in sales."
+                                    : "Try a different search or add a manual item if you need to keep selling."
+                            )
+
+                            ManualItemCard {
+                                showManualItemSheet = true
+                            }
+                        }
+                        .padding(.horizontal, 16)
+                        .padding(.vertical, 8)
+                    }
                 } else {
                     ScrollView {
                         LazyVGrid(columns: [GridItem(.adaptive(minimum: 160), spacing: 12)], spacing: 12) {
@@ -84,8 +97,8 @@ struct SellScreen: View {
                                 }
                             }
 
-                            CustomItemCard {
-                                print("Custom item tapped")
+                            ManualItemCard {
+                                showManualItemSheet = true
                             }
                         }
                         .padding(.horizontal, 16)
@@ -93,7 +106,6 @@ struct SellScreen: View {
                     }
                 }
 
-                // Cart summary
                 if !viewModel.cartItems.isEmpty {
                     CartSummaryBar(viewModel: viewModel, onCheckout: {
                         showPaymentSelection = true
@@ -107,8 +119,6 @@ struct SellScreen: View {
                     isPresented: $showPriceEntry,
                     onAdd: { finalPrice, qty in
                         viewModel.addToCart(product: product, quantity: qty, finalPrice: finalPrice)
-                        enteredPrice = 0
-                        quantity = 1
                     }
                 )
             }
@@ -128,8 +138,23 @@ struct SellScreen: View {
             if showSaleCompletion {
                 SaleCompletionView(
                     reference: viewModel.currentSaleReference,
-                    total: viewModel.cartTotal(),
+                    total: viewModel.lastCompletedTotal,
                     isPresented: $showSaleCompletion
+                )
+            }
+
+            if showManualItemSheet {
+                ManualItemSheet(
+                    isPresented: $showManualItemSheet,
+                    onAdd: { name, category, price, quantity in
+                        let item = ProductModel(
+                            name: name,
+                            category: category.isEmpty ? "Custom item" : category,
+                            pricingType: .open,
+                            isService: false
+                        )
+                        viewModel.addToCart(product: item, quantity: quantity, finalPrice: price)
+                    }
                 )
             }
         }
@@ -140,20 +165,12 @@ private struct EmptyProductView: View {
     let hasProducts: Bool
 
     var body: some View {
-        VStack(spacing: 16) {
-            Image(systemName: hasProducts ? "magnifyingglass" : "shippingbox")
-                .font(.system(size: 36, weight: .light))
-                .foregroundColor(.vendaInkLt)
-            Text(hasProducts ? "No matching products" : "Add your products and services")
-                .font(.system(size: 15, weight: .medium, design: .default))
-                .foregroundColor(.vendaInkMid)
-            if !hasProducts {
-                Text("Tap the Stock tab to add your first product")
-                    .font(.system(size: 12, weight: .regular, design: .default))
-                    .foregroundColor(.vendaInkLt)
-            }
-        }
-        .frame(maxWidth: .infinity)
+        EmptyStateCard(
+            icon: hasProducts ? "magnifyingglass" : "shippingbox",
+            title: hasProducts ? "No matching products" : "Add your products and services",
+            message: hasProducts ? "Try another search or create a manual item for this sale." : "Tap Stock to add items or create a manual item from the sale screen."
+        )
+        .padding(.horizontal, 16)
     }
 }
 
@@ -163,46 +180,80 @@ private struct ProductCard: View {
 
     var body: some View {
         Button(action: onTap) {
-            VendaCard {
-                VStack(alignment: .leading, spacing: 8) {
+            VendaCard(accentColor: product.isService ? .vendaOchre : .vendaForest) {
+                VStack(alignment: .leading, spacing: 10) {
                     HStack {
-                        Image(systemName: "square.fill")
-                            .font(.system(size: 20))
-                            .foregroundColor(.vendaForest)
+                        Circle()
+                            .fill(product.isService ? Color.vendaOchreLt : Color.vendaForestLt)
+                            .frame(width: 34, height: 34)
+                            .overlay(
+                                Image(systemName: product.isService ? "briefcase.fill" : "shippingbox.fill")
+                                    .font(.system(size: 13, weight: .semibold))
+                                    .foregroundColor(product.isService ? .vendaOchreDk : .vendaForestDk)
+                            )
                         Spacer()
+                        Text(product.pricingType.rawValue.capitalized)
+                            .font(.system(size: 9, weight: .semibold, design: .default))
+                            .foregroundColor(.vendaInkMid)
+                            .padding(.horizontal, 8)
+                            .padding(.vertical, 4)
+                            .background(Color.vendaParchment)
+                            .cornerRadius(999)
                     }
 
                     Text(product.name)
-                        .font(.system(size: 13, weight: .medium, design: .default))
+                        .font(.system(size: 14, weight: .semibold, design: .default))
                         .foregroundColor(.vendaInk)
                         .lineLimit(2)
 
-                    Spacer()
+                    Text(product.category)
+                        .font(.system(size: 11, weight: .regular, design: .default))
+                        .foregroundColor(.vendaInkMid)
+                        .lineLimit(1)
+
+                    Spacer(minLength: 0)
 
                     PriceDisplay(product: product)
+                        .padding(.top, 2)
                 }
+                .frame(maxWidth: .infinity, minHeight: 148, alignment: .leading)
             }
         }
         .buttonStyle(PlainButtonStyle())
     }
 }
 
-private struct CustomItemCard: View {
+private struct ManualItemCard: View {
     let onTap: () -> Void
 
     var body: some View {
         Button(action: onTap) {
-            VendaCard {
-                VStack(alignment: .center, spacing: 8) {
+            VendaCard(accentColor: .vendaOchre) {
+                VStack(alignment: .center, spacing: 10) {
+                    Circle()
+                        .fill(Color.vendaOchreLt)
+                        .frame(width: 34, height: 34)
+                        .overlay(
+                            Image(systemName: "plus")
+                                .font(.system(size: 13, weight: .semibold))
+                                .foregroundColor(.vendaOchreDk)
+                        )
+
                     Image(systemName: "plus")
                         .font(.system(size: 24, weight: .semibold))
-                        .foregroundColor(.vendaForest)
-
-                    Text("Custom item")
-                        .font(.system(size: 13, weight: .medium, design: .default))
                         .foregroundColor(.vendaInk)
+
+                    Text("Manual item")
+                        .font(.system(size: 13, weight: .semibold, design: .default))
+                        .foregroundColor(.vendaInk)
+
+                    Text("Add something not yet in stock")
+                        .font(.system(size: 10, weight: .regular, design: .default))
+                        .foregroundColor(.vendaInkMid)
+                        .multilineTextAlignment(.center)
                 }
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
+                .frame(minHeight: 148)
             }
         }
         .buttonStyle(PlainButtonStyle())
@@ -215,9 +266,6 @@ private struct CartSummaryBar: View {
 
     var body: some View {
         VStack(spacing: 0) {
-            Divider()
-                .foregroundColor(.vendaLine)
-
             HStack {
                 VStack(alignment: .leading, spacing: 2) {
                     Text("\(viewModel.cartItems.count) item(s)")
@@ -236,6 +284,11 @@ private struct CartSummaryBar: View {
             .padding(16)
             .background(Color.vendaWhite)
         }
+        .overlay(
+            Divider()
+                .foregroundColor(.vendaLine),
+            alignment: .top
+        )
     }
 }
 
@@ -256,15 +309,12 @@ private struct PaymentSelectionSheet: View {
                 }
 
             VStack(spacing: 16) {
-                // Drag indicator
                 RoundedRectangle(cornerRadius: 2.5)
                     .fill(Color.vendaLine)
                     .frame(width: 36, height: 5)
                     .padding(.top, 8)
 
-                Text("Payment method")
-                    .font(.system(size: 18, weight: .semibold, design: .default))
-                    .foregroundColor(.vendaInk)
+                ScreenSectionHeader(title: "Payment method", subtitle: "Choose how this sale will be recorded")
                     .frame(maxWidth: .infinity, alignment: .leading)
 
                 ForEach(methods, id: \.self) { method in
@@ -279,6 +329,11 @@ private struct PaymentSelectionSheet: View {
                     title: "Complete sale",
                     action: { onSelect(selectedMethod); isPresented = false }
                 )
+
+                Text("You can review and reconcile this sale in Money after checkout.")
+                    .font(.system(size: 11, weight: .regular, design: .default))
+                    .foregroundColor(.vendaInkLt)
+                    .multilineTextAlignment(.center)
             }
             .padding(20)
             .background(Color.vendaWhite)
@@ -313,8 +368,12 @@ private struct PaymentMethodOption: View {
                     .frame(width: 20, height: 20)
             }
             .padding(12)
-            .background(Color.vendaParchment)
+            .background(isSelected ? Color.vendaForestLt : Color.vendaParchment)
             .cornerRadius(10)
+            .overlay(
+                RoundedRectangle(cornerRadius: 10)
+                    .stroke(isSelected ? Color.vendaForest : Color.clear, lineWidth: 1)
+            )
         }
     }
 
@@ -377,6 +436,160 @@ private struct SaleCompletionView: View {
         .onAppear {
             withAnimation(.easeInOut(duration: 0.6)) {
                 showCheckmark = true
+            }
+        }
+    }
+}
+
+private struct SearchField: View {
+    @Binding var text: String
+    let placeholder: String
+
+    var body: some View {
+        HStack(spacing: 10) {
+            Image(systemName: "magnifyingglass")
+                .font(.system(size: 14, weight: .medium))
+                .foregroundColor(.vendaInkLt)
+
+            TextField(placeholder, text: $text)
+                .font(.system(size: 14, weight: .regular, design: .default))
+                .foregroundColor(.vendaInk)
+
+            if !text.isEmpty {
+                Button(action: { text = "" }) {
+                    Image(systemName: "xmark.circle.fill")
+                        .font(.system(size: 14))
+                        .foregroundColor(.vendaInkLt)
+                }
+            }
+        }
+        .padding(.horizontal, 14)
+        .padding(.vertical, 12)
+        .background(Color.vendaWhite)
+        .cornerRadius(14)
+        .overlay(
+            RoundedRectangle(cornerRadius: 14)
+                .stroke(Color.vendaLine, lineWidth: 1)
+        )
+    }
+}
+
+private struct ManualItemSheet: View {
+    @Binding var isPresented: Bool
+    var onAdd: (String, String, Decimal, Decimal) -> Void
+
+    @State private var name = ""
+    @State private var category = ""
+    @State private var price: Decimal = 0
+    @State private var quantity: Decimal = 1
+
+    private var canAdd: Bool {
+        !name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty && price > 0
+    }
+
+    var body: some View {
+        ZStack(alignment: .bottom) {
+            Color.black.opacity(0.4)
+                .ignoresSafeArea()
+                .onTapGesture { isPresented = false }
+
+            VStack(spacing: 16) {
+                RoundedRectangle(cornerRadius: 2.5)
+                    .fill(Color.vendaLine)
+                    .frame(width: 36, height: 5)
+                    .padding(.top, 8)
+
+                ScreenSectionHeader(
+                    title: "Manual item",
+                    subtitle: "Add a one-off product or service to this sale"
+                )
+                .frame(maxWidth: .infinity, alignment: .leading)
+
+                SheetField(title: "Item name", placeholder: "e.g. Braids touch-up", text: $name)
+                SheetField(title: "Category", placeholder: "e.g. Services", text: $category)
+                SheetField(title: "Price", placeholder: "0.00", value: $price)
+
+                HStack {
+                    Text("Quantity")
+                        .font(.system(size: 13, weight: .medium, design: .default))
+                        .foregroundColor(.vendaInkMid)
+                    Spacer()
+                    HStack(spacing: 12) {
+                        Button {
+                            if quantity > 1 { quantity -= 1 }
+                        } label: {
+                            Image(systemName: "minus")
+                                .font(.system(size: 12, weight: .semibold))
+                                .foregroundColor(.vendaInk)
+                                .frame(width: 32, height: 32)
+                                .background(Color.vendaParchment)
+                                .cornerRadius(10)
+                        }
+
+                        Text(quantity.formatted())
+                            .font(.system(size: 15, weight: .semibold, design: .default))
+                            .foregroundColor(.vendaInk)
+                            .frame(minWidth: 28)
+
+                        Button {
+                            quantity += 1
+                        } label: {
+                            Image(systemName: "plus")
+                                .font(.system(size: 12, weight: .semibold))
+                                .foregroundColor(.vendaInk)
+                                .frame(width: 32, height: 32)
+                                .background(Color.vendaParchment)
+                                .cornerRadius(10)
+                        }
+                    }
+                }
+
+                VendaButton(
+                    title: "Add to cart",
+                    action: {
+                        onAdd(name, category, price, quantity)
+                        isPresented = false
+                    },
+                    isEnabled: canAdd
+                )
+            }
+            .padding(20)
+            .background(Color.vendaWhite)
+            .cornerRadius(20, corners: [.topLeft, .topRight])
+        }
+        .ignoresSafeArea()
+    }
+}
+
+private struct SheetField: View {
+    let title: String
+    let placeholder: String
+    var text: Binding<String>? = nil
+    var value: Binding<Decimal>? = nil
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text(title)
+                .font(.system(size: 13, weight: .medium, design: .default))
+                .foregroundColor(.vendaInkMid)
+
+            if let text {
+                TextField(placeholder, text: text)
+                    .font(.system(size: 15, weight: .regular, design: .default))
+                    .foregroundColor(.vendaInk)
+                    .padding(.horizontal, 14)
+                    .padding(.vertical, 12)
+                    .background(Color.vendaParchment)
+                    .cornerRadius(10)
+            } else if let value {
+                TextField(placeholder, value: value, format: .number)
+                    .font(.system(size: 15, weight: .regular, design: .default))
+                    .foregroundColor(.vendaInk)
+                    .keyboardType(.decimalPad)
+                    .padding(.horizontal, 14)
+                    .padding(.vertical, 12)
+                    .background(Color.vendaParchment)
+                    .cornerRadius(10)
             }
         }
     }

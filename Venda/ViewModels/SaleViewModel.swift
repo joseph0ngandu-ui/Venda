@@ -6,8 +6,14 @@ final class SaleViewModel: ObservableObject {
     @Published var cartItems: [CartItem] = []
     @Published var selectedPaymentMethod: String = "Cash"
     @Published var currentSaleReference: String = ""
+    @Published var lastCompletedTotal: Decimal = 0
 
     private var pricingService = PricingService()
+    private let persistence: PersistenceService
+
+    init(persistence: PersistenceService? = nil) {
+        self.persistence = persistence ?? PersistenceService.shared
+    }
 
     func addToCart(product: ProductModel, quantity: Decimal = 1, finalPrice: Decimal) {
         let item = CartItem(
@@ -28,8 +34,8 @@ final class SaleViewModel: ObservableObject {
     }
 
     func completeSale() {
-        let reference = "VND-\(String(Int.random(in: 1...9999)).padded(to: 4))"
-        currentSaleReference = reference
+        lastCompletedTotal = cartTotal()
+        currentSaleReference = persistence.recordSale(cartItems: cartItems, paymentMethod: selectedPaymentMethod)
         cartItems.removeAll()
     }
 

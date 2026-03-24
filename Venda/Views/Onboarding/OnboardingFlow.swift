@@ -2,7 +2,11 @@ import SwiftUI
 
 struct OnboardingFlow: View {
     @EnvironmentObject var appState: AppState
+    @EnvironmentObject var stockViewModel: StockViewModel
     @State private var path = NavigationPath()
+    @State private var registrationDraft: RegistrationDraft?
+    @State private var pendingSession: AuthenticatedSession?
+    @State private var errorMessage: String?
 
     var body: some View {
         NavigationStack(path: $path) {
@@ -15,55 +19,122 @@ struct OnboardingFlow: View {
                 switch route {
                 case .register:
                     BusinessRegistrationScreen { name, owner, phone, type in
-                        // Typically, we'd save this temporarily in a view model
-                        // For the mock, we pass to PIN
+                        registrationDraft = RegistrationDraft(
+                            businessName: name,
+                            ownerName: owner,
+                            phone: phone,
+                            businessType: type
+                        )
                         path.append(Route.pinSetup(name: name, owner: owner, phone: phone, type: type))
                     }
                 case .pinSetup(_, _, _, _):
                     PINSetupScreen(
                         onComplete: { pin in
-                            // Complete Registration Logic here (e.g. API call/CoreData)
-                            path.append(Route.firstProduct)
+                            await handleRegistration(pin: pin)
                         },
                         onBack: { path.removeLast() }
                     )
                 case .firstProduct:
                     FirstProductScreen(
                         onComplete: { product in
-                            // Save product
-                            completeOnboarding()
+                            completeOnboarding(product: product)
                         },
                         onSkip: {
-                            completeOnboarding()
+                            completeOnboarding(product: nil)
                         }
                     )
                 case .joinBusiness:
                     JoinBusinessScreen(
-                        onSuccess: {
-                            // Staff member successfully joined
-                            let mockUser = CurrentUser(id: UUID(), name: "Cashier", role: .cashier, companyCode: "VND-123")
-                            appState.login(user: mockUser)
+                        onSubmit: { companyCode, pin in
+                            await handleStaffJoin(companyCode: companyCode, pin: pin)
                         },
                         onBack: { path.removeLast() }
                     )
                 case .login:
-                    // Fallback simpler PIN entry for existing users
                     LoginScreen(
-                        onComplete: { pin in
-                            // For mocking purposes:
-                            let mockUser = CurrentUser(id: UUID(), name: "Staff Member", role: .cashier, companyCode: "VND-123")
-                            appState.login(user: mockUser)
+                        onSubmit: { phone, pin in
+                            await handleMerchantLogin(phone: phone, pin: pin)
                         },
                         onBack: { path.removeLast() }
                     )
                 }
             }
+            .alert("We couldn't complete that action", isPresented: errorAlertPresented) {
+                Button("OK", role: .cancel) {
+                    errorMessage = nil
+                }
+            } message: {
+                Text(errorMessage ?? "")
+            }
         }
     }
-    
-    private func completeOnboarding(role: StaffRole = .admin) {
-        let mockOwner = CurrentUser(id: UUID(), name: "Owner", role: role, companyCode: "VND-123")
-        appState.login(user: mockOwner)
+
+    private var errorAlertPresented: Binding<Bool> {
+        Binding(
+            get: { errorMessage != nil },
+            set: { newValue in
+                if !newValue {
+                    errorMessage = nil
+                }
+            }
+        )
+    }
+
+    private func handleRegistration(pin: String) async -> String? {
+        guard let registrationDraft else {
+            return "We lost your business details. Please go back and try again."
+        }
+
+        do {
+            let session = try await NetworkService.shared.register(
+                businessName: registrationDraft.businessName,
+                ownerName: registrationDraft.ownerName,
+                businessType: registrationDraft.businessType,
+                phone: registrationDraft.phone,
+                pin: pin
+            )
+            pendingSession = session
+            path.append(Route.firstProduct)
+            return nil
+        } catch {
+            return error.localizedDescription
+        }
+    }
+
+    private func handleMerchantLogin(phone: String, pin: String) async -> String? {
+        do {
+            let session = try await NetworkService.shared.loginMerchant(phone: phone, pin: pin)
+            appState.applyAuthenticatedSession(session)
+            return nil
+        } catch {
+            return error.localizedDescription
+        }
+    }
+
+    private func handleStaffJoin(companyCode: String, pin: String) async -> String? {
+        do {
+            let session = try await NetworkService.shared.joinBusiness(companyCode: companyCode, pin: pin)
+            appState.applyAuthenticatedSession(session)
+            return nil
+        } catch {
+            return error.localizedDescription
+        }
+    }
+
+    private func completeOnboarding(product: ProductModel?) {
+        if let product {
+            stockViewModel.addProduct(product)
+        }
+
+        if let pendingSession {
+            appState.applyAuthenticatedSession(pendingSession)
+        } else {
+            errorMessage = "Your account was created, but we could not restore the session. Please sign in."
+        }
+
+        self.pendingSession = nil
+        registrationDraft = nil
+        path = NavigationPath()
     }
     
     enum Route: Hashable {
@@ -73,4 +144,11 @@ struct OnboardingFlow: View {
         case firstProduct
         case login
     }
+}
+
+private struct RegistrationDraft {
+    let businessName: String
+    let ownerName: String
+    let phone: String
+    let businessType: String
 }

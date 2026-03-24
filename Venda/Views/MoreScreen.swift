@@ -1,6 +1,19 @@
 import SwiftUI
 
 struct MoreScreen: View {
+    @EnvironmentObject var appState: AppState
+    @State private var showLogoutConfirmation = false
+
+    private var currentUserName: String {
+        appState.currentUser?.name ?? "Venda User"
+    }
+
+    private var currentUserInitials: String {
+        let parts = currentUserName.split(separator: " ")
+        let initials = parts.prefix(2).compactMap(\.first)
+        return initials.isEmpty ? "V" : String(initials)
+    }
+    
     var body: some View {
         NavigationStack {
             ZStack {
@@ -21,20 +34,31 @@ struct MoreScreen: View {
 
                     ScrollView {
                         VStack(spacing: 24) {
-                            // Business section
-                            SettingsSection(title: "Business") {
-                                SettingsRow(
-                                    icon: "chart.bar.fill",
-                                    title: "Reports & Analytics",
-                                    subtitle: "View sales performance",
-                                    destination: AnyView(ReportsScreen())
-                                )
-                                SettingsRow(
-                                    icon: "person.2.fill",
-                                    title: "Staff & Roles",
-                                    subtitle: "Manage team access",
-                                    destination: AnyView(Text("Staff Coming Soon"))
-                                )
+                            let isManagerOrAdmin = appState.currentUser?.role.isAdminOrManager ?? false
+
+                            ProfileSummaryCard(
+                                initials: currentUserInitials,
+                                name: appState.currentUser?.businessName ?? currentUserName,
+                                subtitle: "\(appState.currentUser?.companyCode ?? "VND-0000") • \(appState.currentUser?.role.rawValue.capitalized ?? "Staff")",
+                                badgeTitle: "Signed in as \(currentUserName)"
+                            )
+                            
+                            // Business section (Restricted to Managers and Admins)
+                            if isManagerOrAdmin {
+                                SettingsSection(title: "Business") {
+                                    SettingsRow(
+                                        icon: "chart.bar.fill",
+                                        title: "Reports & Analytics",
+                                        subtitle: "View sales performance",
+                                        destination: AnyView(ReportsScreen())
+                                    )
+                                    SettingsRow(
+                                        icon: "person.2.fill",
+                                        title: "Staff & Roles",
+                                        subtitle: "Manage team access",
+                                        destination: AnyView(AdminPanelScreen())
+                                    )
+                                }
                             }
 
                             // Settings section
@@ -51,12 +75,15 @@ struct MoreScreen: View {
                                     subtitle: "Alerts & reminders",
                                     destination: AnyView(Text("Notifications Coming Soon"))
                                 )
-                                SettingsRow(
-                                    icon: "lock.fill",
-                                    title: "Security & Audit",
-                                    subtitle: "PINs & price overrides",
-                                    destination: AnyView(PriceOverrideLogScreen())
-                                )
+                                // Security Audit Restricted to Admins
+                                if isManagerOrAdmin {
+                                    SettingsRow(
+                                        icon: "lock.fill",
+                                        title: "Security & Audit",
+                                        subtitle: "PINs & price overrides",
+                                        destination: AnyView(PriceOverrideLogScreen())
+                                    )
+                                }
                             }
 
                             // Support section
@@ -73,6 +100,35 @@ struct MoreScreen: View {
                                     subtitle: "Legal information",
                                     destination: AnyView(Text("Legal Coming Soon"))
                                 )
+                            }
+
+                            SettingsSection(title: "Session") {
+                                Button {
+                                    showLogoutConfirmation = true
+                                } label: {
+                                    HStack(spacing: 12) {
+                                        Image(systemName: "rectangle.portrait.and.arrow.right")
+                                            .font(.system(size: 16, weight: .semibold))
+                                            .foregroundColor(.vendaEmber)
+                                            .frame(width: 32, height: 32)
+                                            .background(Color.vendaEmber.opacity(0.12))
+                                            .cornerRadius(8)
+
+                                        VStack(alignment: .leading, spacing: 2) {
+                                            Text("Sign Out")
+                                                .font(.system(size: 14, weight: .medium, design: .default))
+                                                .foregroundColor(.vendaInk)
+                                            Text("Clear this device session and return to login")
+                                                .font(.system(size: 11, weight: .regular, design: .default))
+                                                .foregroundColor(.vendaInkMid)
+                                        }
+
+                                        Spacer()
+                                    }
+                                    .padding(.horizontal, 14)
+                                    .padding(.vertical, 12)
+                                }
+                                .buttonStyle(PlainButtonStyle())
                             }
 
                             // App info
@@ -96,6 +152,14 @@ struct MoreScreen: View {
                     }
                 }
             }
+        }
+        .alert("Sign out of Venda?", isPresented: $showLogoutConfirmation) {
+            Button("Cancel", role: .cancel) {}
+            Button("Sign Out", role: .destructive) {
+                appState.logout()
+            }
+        } message: {
+            Text("You’ll need to sign in again to keep syncing this device.")
         }
     }
 }
@@ -170,4 +234,5 @@ private struct SettingsRow: View {
 
 #Preview {
     MoreScreen()
+        .environmentObject(AppState())
 }
