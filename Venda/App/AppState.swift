@@ -27,6 +27,7 @@ struct CurrentUser: Codable {
 struct AuthenticatedSession: Codable {
     let token: String
     let currentUser: CurrentUser
+    let expiresAt: Date?
 }
 
 @MainActor
@@ -56,9 +57,12 @@ class AppState: ObservableObject {
         currentUser = session.currentUser
         isAuthenticated = true
         authErrorMessage = nil
+        PersistenceService.shared.ensureLocalIdentity()
+        SyncEngine.shared.triggerSync()
     }
 
     func logout() {
+        SyncEngine.shared.reset()
         sessionStore.clear()
         currentUser = nil
         isAuthenticated = false
@@ -72,7 +76,8 @@ class AppState: ObservableObject {
             let refreshedIdentity = try await networkService.getMe(token: storedSession.token)
             let refreshedSession = AuthenticatedSession(
                 token: storedSession.token,
-                currentUser: CurrentUser(identity: refreshedIdentity)
+                currentUser: CurrentUser(identity: refreshedIdentity),
+                expiresAt: storedSession.expiresAt
             )
             applyAuthenticatedSession(refreshedSession)
         } catch NetworkError.unauthorized {
@@ -89,12 +94,14 @@ class AppState: ObservableObject {
 
         currentUser = storedSession.currentUser
         isAuthenticated = true
+        PersistenceService.shared.ensureLocalIdentity()
 
         do {
             let refreshedIdentity = try await networkService.getMe(token: storedSession.token)
             let refreshedSession = AuthenticatedSession(
                 token: storedSession.token,
-                currentUser: CurrentUser(identity: refreshedIdentity)
+                currentUser: CurrentUser(identity: refreshedIdentity),
+                expiresAt: storedSession.expiresAt
             )
             applyAuthenticatedSession(refreshedSession)
         } catch NetworkError.unauthorized {

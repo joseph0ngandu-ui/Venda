@@ -8,7 +8,11 @@ struct ProductModel: Identifiable, Hashable {
     var suggestedPrice: Decimal?
     var minPrice: Decimal?
     var maxPrice: Decimal?
+    var stockQuantity: Int
+    var lowStockThreshold: Int
+    var trackStock: Bool
     var isService: Bool
+    var isActive: Bool
 
     init(
         id: UUID = UUID(),
@@ -18,7 +22,11 @@ struct ProductModel: Identifiable, Hashable {
         suggestedPrice: Decimal? = nil,
         minPrice: Decimal? = nil,
         maxPrice: Decimal? = nil,
-        isService: Bool = false
+        stockQuantity: Int = 0,
+        lowStockThreshold: Int = 5,
+        trackStock: Bool = true,
+        isService: Bool = false,
+        isActive: Bool = true
     ) {
         self.id = id
         self.name = name
@@ -27,6 +35,10 @@ struct ProductModel: Identifiable, Hashable {
         self.suggestedPrice = suggestedPrice
         self.minPrice = minPrice
         self.maxPrice = maxPrice
+        self.stockQuantity = stockQuantity
+        self.lowStockThreshold = lowStockThreshold
+        self.trackStock = trackStock
         self.isService = isService
+        self.isActive = isActive
     }
 }

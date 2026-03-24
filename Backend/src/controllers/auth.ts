@@ -30,6 +30,10 @@ type StaffRow = {
   is_active: boolean | null;
   created_at: Date | string;
   updated_at: Date | string;
+  last_login_at?: Date | string | null;
+  pin_updated_at?: Date | string | null;
+  deactivated_at?: Date | string | null;
+  created_by_staff_id?: string | null;
 };
 
 type MerchantProfile = {
@@ -52,11 +56,23 @@ type StaffProfile = {
   is_active: boolean;
   created_at: string;
   updated_at: string;
+  last_login_at: string | null;
+  pin_updated_at: string | null;
+  deactivated_at: string | null;
+  created_by_staff_id: string | null;
 };
 
 const toIsoString = (value: Date | string | null | undefined) => {
   if (!value) {
     return new Date().toISOString();
+  }
+
+  return new Date(value).toISOString();
+};
+
+const toOptionalIsoString = (value: Date | string | null | undefined) => {
+  if (!value) {
+    return null;
   }
 
   return new Date(value).toISOString();
@@ -95,6 +111,10 @@ const serializeStaff = (staff: StaffRow, merchantId: string, companyCode: string
     is_active: staff.is_active ?? true,
     created_at: toIsoString(staff.created_at),
     updated_at: toIsoString(staff.updated_at),
+    last_login_at: toOptionalIsoString(staff.last_login_at),
+    pin_updated_at: toOptionalIsoString(staff.pin_updated_at),
+    deactivated_at: toOptionalIsoString(staff.deactivated_at),
+    created_by_staff_id: staff.created_by_staff_id ?? null,
   };
 };
 
@@ -107,6 +127,10 @@ const synthesizeFallbackStaff = (merchant: MerchantRow): StaffRow => {
     is_active: true,
     created_at: merchant.created_at,
     updated_at: merchant.updated_at,
+    last_login_at: merchant.updated_at,
+    pin_updated_at: merchant.updated_at,
+    deactivated_at: null,
+    created_by_staff_id: null,
   };
 };
 
@@ -143,7 +167,18 @@ const loadMerchantByCompanyCode = async (companyCode: string) => {
 const loadPrimaryStaff = async (merchantId: string) => {
   const result = await pool.query(
     `
-      SELECT id, merchant_id, name, role, is_active, created_at, updated_at
+      SELECT
+        id,
+        merchant_id,
+        name,
+        role,
+        is_active,
+        created_at,
+        updated_at,
+        last_login_at,
+        pin_updated_at,
+        deactivated_at,
+        created_by_staff_id
       FROM staff
       WHERE merchant_id = $1
       ORDER BY
@@ -164,7 +199,19 @@ const loadPrimaryStaff = async (merchantId: string) => {
 const loadStaffByPin = async (merchantId: string, pin: string) => {
   const result = await pool.query(
     `
-      SELECT id, merchant_id, name, role, pin_hash, is_active, created_at, updated_at
+      SELECT
+        id,
+        merchant_id,
+        name,
+        role,
+        pin_hash,
+        is_active,
+        created_at,
+        updated_at,
+        last_login_at,
+        pin_updated_at,
+        deactivated_at,
+        created_by_staff_id
       FROM staff
       WHERE merchant_id = $1
         AND is_active = TRUE
@@ -216,6 +263,8 @@ const buildAuthResponse = (
   const merchantProfile = serializeMerchant(merchant);
   const staffProfile = serializeStaff(staff, merchant.id, merchantProfile.company_code);
   const expiresAt = new Date(Date.now() + AUTH_TOKEN_TTL_SECONDS * 1000).toISOString();
+  const canManageTeam = ['admin', 'manager'].includes(staffProfile.role);
+  const isAdmin = staffProfile.role === 'admin';
 
   return {
     message,
@@ -228,6 +277,14 @@ const buildAuthResponse = (
     merchant: merchantProfile,
     staff: staffProfile,
     user: staffProfile,
+    permissions: {
+      can_view_team: true,
+      can_manage_team: canManageTeam,
+      can_create_staff: isAdmin,
+      can_update_roles: isAdmin,
+      can_rotate_any_pin: isAdmin,
+      can_rotate_own_pin: true,
+    },
     session: {
       access_token: token,
       token_type: 'Bearer',
@@ -278,9 +335,29 @@ export const registerMerchant = async (req: Request, res: Response) => {
 
     const staffResult = await client.query(
       `
-        INSERT INTO staff (id, merchant_id, name, role, pin_hash)
-        VALUES ($1, $2, $3, $4, $5)
-        RETURNING id, merchant_id, name, role, is_active, created_at, updated_at
+        INSERT INTO staff (
+          id,
+          merchant_id,
+          name,
+          role,
+          pin_hash,
+          last_login_at,
+          pin_updated_at,
+          created_by_staff_id
+        )
+        VALUES ($1, $2, $3, $4, $5, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, NULL)
+        RETURNING
+          id,
+          merchant_id,
+          name,
+          role,
+          is_active,
+          created_at,
+          updated_at,
+          last_login_at,
+          pin_updated_at,
+          deactivated_at,
+          created_by_staff_id
       `,
       [uuidv4(), merchantId, ownerName, 'admin', pinHash]
     );
@@ -334,6 +411,8 @@ export const loginMerchant = async (req: Request, res: Response) => {
     }
 
     const primaryStaff = (await loadPrimaryStaff(merchant.id)) ?? synthesizeFallbackStaff(merchant);
+    await pool.query('UPDATE staff SET last_login_at = CURRENT_TIMESTAMP WHERE id = $1', [primaryStaff.id]);
+    primaryStaff.last_login_at = new Date().toISOString();
     const token = createAuthToken(merchant, primaryStaff, 'merchant');
 
     res.json(
@@ -366,6 +445,8 @@ export const joinStaffByCompanyCode = async (req: Request, res: Response) => {
       return res.status(401).json({ error: 'Invalid company code or PIN' });
     }
 
+    await pool.query('UPDATE staff SET last_login_at = CURRENT_TIMESTAMP WHERE id = $1', [staff.id]);
+    staff.last_login_at = new Date().toISOString();
     const token = createAuthToken(merchant, staff, 'staff');
 
     res.json(
@@ -392,6 +473,7 @@ export const getMe = async (req: AuthRequest, res: Response) => {
         ? await pool.query(
             `
               SELECT id, merchant_id, name, role, is_active, created_at, updated_at
+                     , last_login_at, pin_updated_at, deactivated_at, created_by_staff_id
               FROM staff
               WHERE id = $1 AND merchant_id = $2
               LIMIT 1
@@ -412,6 +494,14 @@ export const getMe = async (req: AuthRequest, res: Response) => {
       merchant: merchantProfile,
       staff: staffProfile,
       user: staffProfile,
+      permissions: {
+        can_view_team: true,
+        can_manage_team: ['admin', 'manager'].includes(staffProfile.role),
+        can_create_staff: staffProfile.role === 'admin',
+        can_update_roles: staffProfile.role === 'admin',
+        can_rotate_any_pin: staffProfile.role === 'admin',
+        can_rotate_own_pin: true,
+      },
       session: {
         authenticated: true,
         auth_type: authType,

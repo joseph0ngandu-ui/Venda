@@ -21,7 +21,6 @@
         <attribute name="id" optional="YES" attributeType="UUID" usesScalarValueType="NO"/>
         <attribute name="name" optional="YES" attributeType="String"/>
         <attribute name="phone" optional="YES" attributeType="String"/>
-        <attribute name="pin" optional="YES" attributeType="String"/>
         <attribute name="syncedAt" optional="YES" attributeType="Date" usesScalarValueType="NO"/>
         <relationship name="creditEntries" optional="YES" toMany="YES" deletionRule="Cascade" destinationEntity="CreditEntry" inverseName="merchant" inverseEntity="CreditEntry"/>
         <relationship name="momoTransactions" optional="YES" toMany="YES" deletionRule="Cascade" destinationEntity="MoMoTransaction" inverseName="merchant" inverseEntity="MoMoTransaction"/>
@@ -94,7 +93,6 @@
         <attribute name="id" optional="YES" attributeType="UUID" usesScalarValueType="NO"/>
         <attribute name="isActive" optional="YES" attributeType="Boolean" defaultValueString="YES" usesScalarValueType="YES"/>
         <attribute name="name" optional="YES" attributeType="String"/>
-        <attribute name="pin" optional="YES" attributeType="String"/>
         <attribute name="role" optional="YES" attributeType="String"/>
         <attribute name="syncedAt" optional="YES" attributeType="Date" usesScalarValueType="NO"/>
         <relationship name="merchant" optional="YES" maxCount="1" deletionRule="Nullify" destinationEntity="Merchant" inverseName="staffMembers" inverseEntity="Merchant"/>

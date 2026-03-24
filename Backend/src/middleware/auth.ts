@@ -1,7 +1,10 @@
 import { Request, Response, NextFunction } from 'express';
 import jwt, { JwtPayload } from 'jsonwebtoken';
+import pool from '../config/db';
 
 export type StaffRole = 'admin' | 'manager' | 'cashier';
+
+const TEAM_MANAGER_ROLES: StaffRole[] = ['admin', 'manager'];
 
 export const buildCompanyCode = (merchantId: string) => {
   return `VND-${merchantId.replace(/-/g, '').slice(0, 8).toUpperCase()}`;
@@ -18,6 +21,18 @@ export const normalizeStaffRole = (role?: string): StaffRole => {
     default:
       return 'admin';
   }
+};
+
+export const isValidStaffRole = (role: unknown): role is StaffRole => {
+  return role === 'admin' || role === 'manager' || role === 'cashier';
+};
+
+export const canManageTeam = (role?: string | null) => {
+  return !!role && TEAM_MANAGER_ROLES.includes(normalizeStaffRole(role));
+};
+
+export const canManageAllStaff = (role?: string | null) => {
+  return !!role && normalizeStaffRole(role) === 'admin';
 };
 
 export interface AuthTokenPayload extends JwtPayload {
@@ -51,7 +66,7 @@ export interface AuthRequest extends Request {
   authType?: 'merchant' | 'staff';
 }
 
-export const authenticateJWT = (req: AuthRequest, res: Response, next: NextFunction) => {
+export const authenticateJWT = async (req: AuthRequest, res: Response, next: NextFunction) => {
   const authHeader = req.headers.authorization;
 
   if (!authHeader?.startsWith('Bearer ')) {
@@ -85,11 +100,30 @@ export const authenticateJWT = (req: AuthRequest, res: Response, next: NextFunct
     req.authType = decoded.authType ?? 'merchant';
 
     if (decoded.staffId) {
+      const result = await pool.query(
+        `
+          SELECT id, merchant_id, name, role, is_active
+          FROM staff
+          WHERE id = $1 AND merchant_id = $2
+          LIMIT 1
+        `,
+        [decoded.staffId, merchantId]
+      );
+
+      const liveStaff = result.rows[0] as
+        | { id: string; merchant_id: string; name: string; role: string; is_active: boolean | null }
+        | undefined;
+
+      if (!liveStaff || liveStaff.is_active === false) {
+        res.status(403).json({ error: 'Staff account is inactive' });
+        return;
+      }
+
       req.staff = {
-        id: decoded.staffId,
+        id: liveStaff.id,
         merchantId,
-        name: decoded.staffName ?? '',
-        role: normalizeStaffRole(decoded.role),
+        name: liveStaff.name,
+        role: normalizeStaffRole(liveStaff.role),
         companyCode,
       };
     }
@@ -98,4 +132,22 @@ export const authenticateJWT = (req: AuthRequest, res: Response, next: NextFunct
   } catch (error) {
     res.status(403).json({ error: 'Forbidden' });
   }
+};
+
+export const requireTeamManagementAccess = (req: AuthRequest, res: Response, next: NextFunction) => {
+  if (!req.staff || !canManageTeam(req.staff.role)) {
+    res.status(403).json({ error: 'Team management access required' });
+    return;
+  }
+
+  next();
+};
+
+export const requireAdminAccess = (req: AuthRequest, res: Response, next: NextFunction) => {
+  if (!req.staff || !canManageAllStaff(req.staff.role)) {
+    res.status(403).json({ error: 'Admin access required' });
+    return;
+  }
+
+  next();
 };

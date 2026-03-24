@@ -30,11 +30,27 @@ Success response:
 ```json
 {
   "message": "Merchant registered successfully",
+  "auth_type": "merchant",
+  "company_code": "VND-1234ABCD",
   "merchant": {
     "id": "uuid",
     "business_name": "Shop Name",
     "business_type": "Retail",
-    "phone": "260..."
+    "phone": "260...",
+    "currency": "ZMW",
+    "company_code": "VND-1234ABCD"
+  },
+  "staff": {
+    "id": "uuid",
+    "merchant_id": "uuid",
+    "name": "Owner",
+    "role": "admin",
+    "company_code": "VND-1234ABCD",
+    "is_active": true
+  },
+  "permissions": {
+    "can_manage_team": true,
+    "can_create_staff": true
   },
   "token": "jwt"
 }
@@ -55,12 +71,59 @@ Success response:
 
 ```json
 {
+  "auth_type": "merchant",
+  "company_code": "VND-1234ABCD",
   "merchant": {
     "id": "uuid",
     "business_name": "Shop Name",
     "business_type": "Retail",
     "phone": "260...",
-    "currency": "ZMW"
+    "currency": "ZMW",
+    "company_code": "VND-1234ABCD"
+  },
+  "staff": {
+    "id": "uuid",
+    "name": "Owner",
+    "role": "admin",
+    "is_active": true
+  },
+  "token": "jwt"
+}
+```
+
+### `POST /auth/join`
+
+Request body:
+
+```json
+{
+  "company_code": "VND-1234ABCD",
+  "pin": "1234"
+}
+```
+
+Success response:
+
+```json
+{
+  "message": "Staff login successful",
+  "auth_type": "staff",
+  "company_code": "VND-1234ABCD",
+  "merchant": {
+    "id": "uuid",
+    "business_name": "Shop Name"
+  },
+  "staff": {
+    "id": "uuid",
+    "merchant_id": "uuid",
+    "name": "Cashier One",
+    "role": "cashier",
+    "company_code": "VND-1234ABCD",
+    "is_active": true
+  },
+  "permissions": {
+    "can_manage_team": false,
+    "can_rotate_own_pin": true
   },
   "token": "jwt"
 }
@@ -78,16 +141,126 @@ Success response:
 
 ```json
 {
+  "authenticated": true,
+  "company_code": "VND-1234ABCD",
   "merchant": {
     "id": "uuid",
     "business_name": "Shop Name",
     "business_type": "Retail",
     "phone": "260...",
-    "currency": "ZMW",
-    "created_at": "timestamp"
+    "currency": "ZMW"
+  },
+  "staff": {
+    "id": "uuid",
+    "merchant_id": "uuid",
+    "name": "Owner",
+    "role": "admin",
+    "company_code": "VND-1234ABCD",
+    "is_active": true,
+    "last_login_at": "timestamp",
+    "pin_updated_at": "timestamp",
+    "deactivated_at": null
+  },
+  "permissions": {
+    "can_manage_team": true,
+    "can_create_staff": true,
+    "can_rotate_own_pin": true
   }
 }
 ```
+
+## Staff Endpoints
+
+All staff endpoints require `Authorization: Bearer <jwt>`.
+
+### `GET /staff`
+
+Returns:
+
+```json
+{
+  "company_code": "VND-1234ABCD",
+  "permissions": {
+    "can_manage_team": true,
+    "can_create_staff": true,
+    "can_rotate_any_pin": true
+  },
+  "summary": {
+    "total": 3,
+    "active": 2,
+    "inactive": 1,
+    "admins": 1,
+    "managers": 0,
+    "cashiers": 2
+  },
+  "staff": [
+    {
+      "id": "uuid",
+      "merchant_id": "uuid",
+      "name": "Owner",
+      "role": "admin",
+      "company_code": "VND-1234ABCD",
+      "is_active": true,
+      "status": "active",
+      "last_login_at": "timestamp",
+      "pin_updated_at": "timestamp",
+      "deactivated_at": null,
+      "is_current_user": true
+    }
+  ]
+}
+```
+
+### `POST /staff`
+
+Admin-only request body:
+
+```json
+{
+  "name": "Chanda",
+  "role": "cashier",
+  "pin": "2468"
+}
+```
+
+### `PATCH /staff/:staffId`
+
+Admin-only. Supports any combination of:
+
+```json
+{
+  "name": "Updated Name",
+  "role": "manager",
+  "is_active": true
+}
+```
+
+### `POST /staff/:staffId/pin`
+
+Admins may rotate any staff PIN:
+
+```json
+{
+  "pin": "4321"
+}
+```
+
+Non-admin staff may rotate only their own PIN and must include:
+
+```json
+{
+  "current_pin": "1234",
+  "pin": "4321"
+}
+```
+
+### `POST /staff/:staffId/deactivate`
+
+Admin-only. Deactivates the target staff record unless that would remove the last active admin.
+
+### `POST /staff/:staffId/reactivate`
+
+Admin-only. Reactivates a previously disabled staff record.
 
 ## Sync Endpoints
 
@@ -149,3 +322,5 @@ Success response shape:
   }
 }
 ```
+
+Staff rows returned from `GET /sync/pull` now exclude `pin_hash`. Staff creation and PIN rotation should happen through the dedicated `/staff` endpoints rather than generic sync payloads.

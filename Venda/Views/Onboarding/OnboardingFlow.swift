@@ -122,14 +122,15 @@ struct OnboardingFlow: View {
     }
 
     private func completeOnboarding(product: ProductModel?) {
-        if let product {
-            stockViewModel.addProduct(product)
-        }
-
         if let pendingSession {
             appState.applyAuthenticatedSession(pendingSession)
         } else {
             errorMessage = "Your account was created, but we could not restore the session. Please sign in."
+        }
+
+        if let product {
+            stockViewModel.addProduct(product)
+            SyncEngine.shared.triggerSync()
         }
 
         self.pendingSession = nil

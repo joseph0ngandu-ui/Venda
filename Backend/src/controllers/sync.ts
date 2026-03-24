@@ -1,6 +1,6 @@
 import { Response } from 'express';
 import pool from '../config/db';
-import { AuthRequest } from '../middleware/auth';
+import { AuthRequest, normalizeStaffRole } from '../middleware/auth';
 
 export const pushSync = async (req: AuthRequest, res: Response) => {
   const merchantId = req.merchant?.id;
@@ -11,14 +11,72 @@ export const pushSync = async (req: AuthRequest, res: Response) => {
   try {
     await client.query('BEGIN');
 
-    // Sync Staff
+    // Sync Staff metadata without requiring the client to hold PIN hashes.
     for (const s of staff) {
+      const existingStaff = await client.query(
+        `
+          SELECT id
+          FROM staff
+          WHERE id = $1 AND merchant_id = $2
+          LIMIT 1
+        `,
+        [s.id, merchantId]
+      );
+
+      if (existingStaff.rows.length > 0) {
+        await client.query(
+          `
+            UPDATE staff
+            SET
+              name = $1,
+              role = $2,
+              is_active = $3,
+              deactivated_at = CASE WHEN $3 THEN NULL ELSE COALESCE(deactivated_at, CURRENT_TIMESTAMP) END,
+              updated_at = COALESCE($4, CURRENT_TIMESTAMP)
+            WHERE id = $5 AND merchant_id = $6
+          `,
+          [
+            s.name,
+            normalizeStaffRole(s.role),
+            s.is_active ?? true,
+            s.updated_at ?? null,
+            s.id,
+            merchantId,
+          ]
+        );
+        continue;
+      }
+
+      if (!s.pin_hash) {
+        continue;
+      }
+
       await client.query(
-        `INSERT INTO staff (id, merchant_id, name, role, pin_hash, is_active, created_at, updated_at)
-         VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
-         ON CONFLICT (id) DO UPDATE SET
-         name = EXCLUDED.name, role = EXCLUDED.role, is_active = EXCLUDED.is_active, updated_at = EXCLUDED.updated_at`,
-        [s.id, merchantId, s.name, s.role, s.pin_hash, s.is_active, s.created_at, s.updated_at]
+        `
+          INSERT INTO staff (
+            id,
+            merchant_id,
+            name,
+            role,
+            pin_hash,
+            is_active,
+            created_at,
+            updated_at,
+            pin_updated_at,
+            deactivated_at
+          )
+          VALUES ($1, $2, $3, $4, $5, $6, $7, $8, COALESCE($8, CURRENT_TIMESTAMP), CASE WHEN $6 THEN NULL ELSE COALESCE($8, CURRENT_TIMESTAMP) END)
+        `,
+        [
+          s.id,
+          merchantId,
+          s.name,
+          normalizeStaffRole(s.role),
+          s.pin_hash,
+          s.is_active ?? true,
+          s.created_at ?? new Date().toISOString(),
+          s.updated_at ?? new Date().toISOString(),
+        ]
       );
     }
 
@@ -99,7 +157,25 @@ export const pullSync = async (req: AuthRequest, res: Response) => {
   try {
     const products = await pool.query('SELECT * FROM products WHERE merchant_id = $1 AND updated_at > $2', [merchantId, updatedAfter]);
     const sales = await pool.query('SELECT * FROM sales WHERE merchant_id = $1 AND updated_at > $2', [merchantId, updatedAfter]);
-    const staff = await pool.query('SELECT * FROM staff WHERE merchant_id = $1 AND updated_at > $2', [merchantId, updatedAfter]);
+    const staff = await pool.query(
+      `
+        SELECT
+          id,
+          merchant_id,
+          name,
+          role,
+          is_active,
+          created_at,
+          updated_at,
+          last_login_at,
+          pin_updated_at,
+          deactivated_at,
+          created_by_staff_id
+        FROM staff
+        WHERE merchant_id = $1 AND updated_at > $2
+      `,
+      [merchantId, updatedAfter]
+    );
     const momo_transactions = await pool.query('SELECT * FROM momo_transactions WHERE merchant_id = $1 AND updated_at > $2', [merchantId, updatedAfter]);
     const credit_entries = await pool.query('SELECT * FROM credit_entries WHERE merchant_id = $1 AND updated_at > $2', [merchantId, updatedAfter]);
 

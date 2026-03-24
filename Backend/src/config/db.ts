@@ -23,6 +23,32 @@ CREATE TABLE IF NOT EXISTS staff (
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
 
+ALTER TABLE staff
+    ADD COLUMN IF NOT EXISTS created_by_staff_id UUID REFERENCES staff(id) ON DELETE SET NULL;
+
+ALTER TABLE staff
+    ADD COLUMN IF NOT EXISTS last_login_at TIMESTAMP WITH TIME ZONE;
+
+ALTER TABLE staff
+    ADD COLUMN IF NOT EXISTS pin_updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP;
+
+ALTER TABLE staff
+    ADD COLUMN IF NOT EXISTS deactivated_at TIMESTAMP WITH TIME ZONE;
+
+UPDATE staff
+SET pin_updated_at = COALESCE(pin_updated_at, created_at, CURRENT_TIMESTAMP)
+WHERE pin_updated_at IS NULL;
+
+UPDATE staff
+SET deactivated_at = CASE
+    WHEN is_active = FALSE AND deactivated_at IS NULL THEN updated_at
+    ELSE deactivated_at
+END
+WHERE is_active = FALSE;
+
+CREATE INDEX IF NOT EXISTS idx_staff_merchant_id ON staff(merchant_id);
+CREATE INDEX IF NOT EXISTS idx_staff_merchant_active_role ON staff(merchant_id, is_active, role);
+
 CREATE TABLE IF NOT EXISTS products (
     id UUID PRIMARY KEY,
     merchant_id UUID REFERENCES merchants(id) ON DELETE CASCADE,
