@@ -1,0 +1,103 @@
+<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<model type="com.apple.IDECoreDataModeler.DataModel" documentVersion="1.0" lastSavedToolsVersion="21815" systemVersion="22G74" minimumToolsVersion="Automatic" sourceLanguage="Swift" userDefinedModelVersionIdentifier="">
+    <entity name="CreditEntry" representedClassName="CreditEntry" syncable="YES" codeGenerationType="class">
+        <attribute name="amount" optional="YES" attributeType="Decimal" defaultValueString="0.0"/>
+        <attribute name="amountRepaid" optional="YES" attributeType="Decimal" defaultValueString="0.0"/>
+        <attribute name="createdAt" optional="YES" attributeType="Date" usesScalarValueType="NO"/>
+        <attribute name="customerName" optional="YES" attributeType="String"/>
+        <attribute name="customerPhone" optional="YES" attributeType="String"/>
+        <attribute name="dueDate" optional="YES" attributeType="Date" usesScalarValueType="NO"/>
+        <attribute name="id" optional="YES" attributeType="UUID" usesScalarValueType="NO"/>
+        <attribute name="status" optional="YES" attributeType="String" defaultValueString="outstanding"/>
+        <attribute name="syncedAt" optional="YES" attributeType="Date" usesScalarValueType="NO"/>
+        <relationship name="merchant" optional="YES" maxCount="1" deletionRule="Nullify" destinationEntity="Merchant" inverseName="creditEntries" inverseEntity="Merchant"/>
+        <relationship name="sale" optional="YES" maxCount="1" deletionRule="Nullify" destinationEntity="Sale" inverseName="creditEntry" inverseEntity="Sale"/>
+    </entity>
+    <entity name="Merchant" representedClassName="Merchant" syncable="YES" codeGenerationType="class">
+        <attribute name="businessName" optional="YES" attributeType="String"/>
+        <attribute name="businessType" optional="YES" attributeType="String"/>
+        <attribute name="createdAt" optional="YES" attributeType="Date" usesScalarValueType="NO"/>
+        <attribute name="currency" optional="YES" attributeType="String" defaultValueString="ZMW"/>
+        <attribute name="id" optional="YES" attributeType="UUID" usesScalarValueType="NO"/>
+        <attribute name="name" optional="YES" attributeType="String"/>
+        <attribute name="phone" optional="YES" attributeType="String"/>
+        <attribute name="pin" optional="YES" attributeType="String"/>
+        <attribute name="syncedAt" optional="YES" attributeType="Date" usesScalarValueType="NO"/>
+        <relationship name="creditEntries" optional="YES" toMany="YES" deletionRule="Cascade" destinationEntity="CreditEntry" inverseName="merchant" inverseEntity="CreditEntry"/>
+        <relationship name="momoTransactions" optional="YES" toMany="YES" deletionRule="Cascade" destinationEntity="MoMoTransaction" inverseName="merchant" inverseEntity="MoMoTransaction"/>
+        <relationship name="products" optional="YES" toMany="YES" deletionRule="Cascade" destinationEntity="Product" inverseName="merchant" inverseEntity="Product"/>
+        <relationship name="sales" optional="YES" toMany="YES" deletionRule="Cascade" destinationEntity="Sale" inverseName="merchant" inverseEntity="Sale"/>
+        <relationship name="staffMembers" optional="YES" toMany="YES" deletionRule="Cascade" destinationEntity="Staff" inverseName="merchant" inverseEntity="Staff"/>
+    </entity>
+    <entity name="MoMoTransaction" representedClassName="MoMoTransaction" syncable="YES" codeGenerationType="class">
+        <attribute name="amount" optional="YES" attributeType="Decimal" defaultValueString="0.0"/>
+        <attribute name="createdAt" optional="YES" attributeType="Date" usesScalarValueType="NO"/>
+        <attribute name="id" optional="YES" attributeType="UUID" usesScalarValueType="NO"/>
+        <attribute name="receivedAt" optional="YES" attributeType="Date" usesScalarValueType="NO"/>
+        <attribute name="senderPhone" optional="YES" attributeType="String"/>
+        <attribute name="status" optional="YES" attributeType="String" defaultValueString="unmatched"/>
+        <attribute name="syncedAt" optional="YES" attributeType="Date" usesScalarValueType="NO"/>
+        <attribute name="transactionRef" optional="YES" attributeType="String"/>
+        <relationship name="merchant" optional="YES" maxCount="1" deletionRule="Nullify" destinationEntity="Merchant" inverseName="momoTransactions" inverseEntity="Merchant"/>
+        <relationship name="sale" optional="YES" maxCount="1" deletionRule="Nullify" destinationEntity="Sale" inverseName="momoTransaction" inverseEntity="Sale"/>
+    </entity>
+    <entity name="Product" representedClassName="Product" syncable="YES" codeGenerationType="class">
+        <attribute name="category" optional="YES" attributeType="String"/>
+        <attribute name="createdAt" optional="YES" attributeType="Date" usesScalarValueType="NO"/>
+        <attribute name="id" optional="YES" attributeType="UUID" usesScalarValueType="NO"/>
+        <attribute name="isActive" optional="YES" attributeType="Boolean" defaultValueString="YES" usesScalarValueType="YES"/>
+        <attribute name="isService" optional="YES" attributeType="Boolean" defaultValueString="NO" usesScalarValueType="YES"/>
+        <attribute name="lowStockThreshold" optional="YES" attributeType="Integer 32" defaultValueString="5" usesScalarValueType="YES"/>
+        <attribute name="maxPrice" optional="YES" attributeType="Decimal"/>
+        <attribute name="minPrice" optional="YES" attributeType="Decimal"/>
+        <attribute name="name" optional="YES" attributeType="String"/>
+        <attribute name="pricingType" optional="YES" attributeType="String"/>
+        <attribute name="stockQuantity" optional="YES" attributeType="Integer 32" defaultValueString="0" usesScalarValueType="YES"/>
+        <attribute name="suggestedPrice" optional="YES" attributeType="Decimal"/>
+        <attribute name="syncedAt" optional="YES" attributeType="Date" usesScalarValueType="NO"/>
+        <attribute name="trackStock" optional="YES" attributeType="Boolean" defaultValueString="YES" usesScalarValueType="YES"/>
+        <relationship name="merchant" optional="YES" maxCount="1" deletionRule="Nullify" destinationEntity="Merchant" inverseName="products" inverseEntity="Merchant"/>
+        <relationship name="saleLineItems" optional="YES" toMany="YES" deletionRule="Nullify" destinationEntity="SaleLineItem" inverseName="product" inverseEntity="SaleLineItem"/>
+    </entity>
+    <entity name="Sale" representedClassName="Sale" syncable="YES" codeGenerationType="class">
+        <attribute name="createdAt" optional="YES" attributeType="Date" usesScalarValueType="NO"/>
+        <attribute name="customerPhone" optional="YES" attributeType="String"/>
+        <attribute name="id" optional="YES" attributeType="UUID" usesScalarValueType="NO"/>
+        <attribute name="notes" optional="YES" attributeType="String"/>
+        <attribute name="paymentMethod" optional="YES" attributeType="String"/>
+        <attribute name="reference" optional="YES" attributeType="String"/>
+        <attribute name="status" optional="YES" attributeType="String" defaultValueString="completed"/>
+        <attribute name="syncedAt" optional="YES" attributeType="Date" usesScalarValueType="NO"/>
+        <attribute name="totalAmount" optional="YES" attributeType="Decimal" defaultValueString="0.0"/>
+        <relationship name="creditEntry" optional="YES" maxCount="1" deletionRule="Cascade" destinationEntity="CreditEntry" inverseName="sale" inverseEntity="CreditEntry"/>
+        <relationship name="lineItems" optional="YES" toMany="YES" deletionRule="Cascade" destinationEntity="SaleLineItem" inverseName="sale" inverseEntity="SaleLineItem"/>
+        <relationship name="merchant" optional="YES" maxCount="1" deletionRule="Nullify" destinationEntity="Merchant" inverseName="sales" inverseEntity="Merchant"/>
+        <relationship name="momoTransaction" optional="YES" maxCount="1" deletionRule="Nullify" destinationEntity="MoMoTransaction" inverseName="sale" inverseEntity="MoMoTransaction"/>
+        <relationship name="staff" optional="YES" maxCount="1" deletionRule="Nullify" destinationEntity="Staff" inverseName="sales" inverseEntity="Staff"/>
+    </entity>
+    <entity name="SaleLineItem" representedClassName="SaleLineItem" syncable="YES" codeGenerationType="class">
+        <attribute name="createdAt" optional="YES" attributeType="Date" usesScalarValueType="NO"/>
+        <attribute name="discountAmount" optional="YES" attributeType="Decimal" defaultValueString="0.0"/>
+        <attribute name="discountReason" optional="YES" attributeType="String"/>
+        <attribute name="finalPrice" optional="YES" attributeType="Decimal" defaultValueString="0.0"/>
+        <attribute name="id" optional="YES" attributeType="UUID" usesScalarValueType="NO"/>
+        <attribute name="originalPrice" optional="YES" attributeType="Decimal"/>
+        <attribute name="priceOverrideBy" optional="YES" attributeType="String"/>
+        <attribute name="quantity" optional="YES" attributeType="Decimal" defaultValueString="1.0"/>
+        <attribute name="syncedAt" optional="YES" attributeType="Date" usesScalarValueType="NO"/>
+        <attribute name="unitPrice" optional="YES" attributeType="Decimal" defaultValueString="0.0"/>
+        <relationship name="product" optional="YES" maxCount="1" deletionRule="Nullify" destinationEntity="Product" inverseName="saleLineItems" inverseEntity="Product"/>
+        <relationship name="sale" optional="YES" maxCount="1" deletionRule="Nullify" destinationEntity="Sale" inverseName="lineItems" inverseEntity="Sale"/>
+    </entity>
+    <entity name="Staff" representedClassName="Staff" syncable="YES" codeGenerationType="class">
+        <attribute name="createdAt" optional="YES" attributeType="Date" usesScalarValueType="NO"/>
+        <attribute name="id" optional="YES" attributeType="UUID" usesScalarValueType="NO"/>
+        <attribute name="isActive" optional="YES" attributeType="Boolean" defaultValueString="YES" usesScalarValueType="YES"/>
+        <attribute name="name" optional="YES" attributeType="String"/>
+        <attribute name="pin" optional="YES" attributeType="String"/>
+        <attribute name="role" optional="YES" attributeType="String"/>
+        <attribute name="syncedAt" optional="YES" attributeType="Date" usesScalarValueType="NO"/>
+        <relationship name="merchant" optional="YES" maxCount="1" deletionRule="Nullify" destinationEntity="Merchant" inverseName="staffMembers" inverseEntity="Merchant"/>
+        <relationship name="sales" optional="YES" toMany="YES" deletionRule="Nullify" destinationEntity="Sale" inverseName="staff" inverseEntity="Sale"/>
+    </entity>
+</model>
