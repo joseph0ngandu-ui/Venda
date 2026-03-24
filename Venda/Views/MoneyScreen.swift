@@ -262,5 +262,5 @@ private struct CreditEntryRow: View {
 }
 
 #Preview {
-    MoneyScreen()
+    MoneyScreen(viewModel: MoneyViewModel())
 }

@@ -2,6 +2,7 @@ import SwiftUI
 
 struct WelcomeScreen: View {
     var onGetStarted: () -> Void
+    var onJoinBusiness: () -> Void
     var onLogin: () -> Void
 
     var body: some View {
@@ -36,29 +37,32 @@ struct WelcomeScreen: View {
                 Spacer()
 
                 // Actions
-                VStack(spacing: 16) {
+                VStack(spacing: 12) {
                     Button(action: onGetStarted) {
                         Text("Set up my business")
                             .font(.system(size: 15, weight: .semibold, design: .default))
                             .foregroundColor(.vendaForest)
                             .frame(height: 52)
                             .frame(maxWidth: .infinity)
-                            .background(Color.white)
+                            .background(Color.vendaWhite)
+                            .cornerRadius(14)
+                    }
+                    
+                    Button(action: onJoinBusiness) {
+                        Text("Join existing business")
+                            .font(.system(size: 15, weight: .semibold, design: .default))
+                            .foregroundColor(.vendaWhite)
+                            .frame(height: 52)
+                            .frame(maxWidth: .infinity)
+                            .background(Color.white.opacity(0.15))
                             .cornerRadius(14)
                     }
 
                     Button(action: onLogin) {
                         Text("I already have an account")
-                            .font(.system(size: 15, weight: .medium, design: .default))
-                            .foregroundColor(.white)
-                            .frame(height: 52)
-                            .frame(maxWidth: .infinity)
-                            .background(Color.clear)
-                            .cornerRadius(14)
-                            .overlay(
-                                RoundedRectangle(cornerRadius: 14)
-                                    .stroke(Color.white.opacity(0.4), lineWidth: 1)
-                            )
+                            .font(.system(size: 14, weight: .medium, design: .default))
+                            .foregroundColor(.white.opacity(0.8))
+                            .padding(.top, 8)
                     }
                 }
                 .padding(.horizontal, 24)
@@ -83,5 +87,5 @@ private struct FeaturePill: View {
 }
 
 #Preview {
-    WelcomeScreen(onGetStarted: {}, onLogin: {})
+    WelcomeScreen(onGetStarted: {}, onJoinBusiness: {}, onLogin: {})
 }

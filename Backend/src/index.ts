@@ -19,7 +19,17 @@ app.get('/health', (req, res) => {
   res.json({ status: 'ok', service: 'venda-api', timestamp: new Date().toISOString() });
 });
 
-app.listen(PORT, async () => {
-  console.log(`Venda Backend API running on port ${PORT}`);
-  await initDb();
-});
+const startServer = async () => {
+  try {
+    await initDb();
+
+    app.listen(PORT, () => {
+      console.log(`Venda Backend API running on port ${PORT}`);
+    });
+  } catch (error) {
+    console.error('Failed to start Venda Backend API:', error);
+    process.exit(1);
+  }
+};
+
+void startServer();

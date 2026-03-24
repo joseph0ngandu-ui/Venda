@@ -8,6 +8,7 @@ struct OnboardingFlow: View {
         NavigationStack(path: $path) {
             WelcomeScreen(
                 onGetStarted: { path.append(Route.register) },
+                onJoinBusiness: { path.append(Route.joinBusiness) },
                 onLogin: { path.append(Route.login) }
             )
             .navigationDestination(for: Route.self) { route in
@@ -36,12 +37,22 @@ struct OnboardingFlow: View {
                             completeOnboarding()
                         }
                     )
+                case .joinBusiness:
+                    JoinBusinessScreen(
+                        onSuccess: {
+                            // Staff member successfully joined
+                            let mockUser = CurrentUser(id: UUID(), name: "Cashier", role: .cashier, companyCode: "VND-123")
+                            appState.login(user: mockUser)
+                        },
+                        onBack: { path.removeLast() }
+                    )
                 case .login:
                     // Fallback simpler PIN entry for existing users
                     LoginScreen(
                         onComplete: { pin in
-                            // Verify PIN
-                            appState.isAuthenticated = true
+                            // For mocking purposes:
+                            let mockUser = CurrentUser(id: UUID(), name: "Staff Member", role: .cashier, companyCode: "VND-123")
+                            appState.login(user: mockUser)
                         },
                         onBack: { path.removeLast() }
                     )
@@ -50,12 +61,14 @@ struct OnboardingFlow: View {
         }
     }
     
-    private func completeOnboarding() {
-        appState.isAuthenticated = true
+    private func completeOnboarding(role: StaffRole = .admin) {
+        let mockOwner = CurrentUser(id: UUID(), name: "Owner", role: role, companyCode: "VND-123")
+        appState.login(user: mockOwner)
     }
     
     enum Route: Hashable {
         case register
+        case joinBusiness
         case pinSetup(name: String, owner: String, phone: String, type: String)
         case firstProduct
         case login

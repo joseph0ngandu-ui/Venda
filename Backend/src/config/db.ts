@@ -134,11 +134,16 @@ const pool = new Pool({
 });
 
 export const initDb = async () => {
+  if (!process.env.DATABASE_URL) {
+    throw new Error('DATABASE_URL is not set');
+  }
+
   try {
     await pool.query(dbInitString);
     console.log('Database initialized successfully');
   } catch (error) {
     console.error('Error initializing database:', error);
+    throw error;
   }
 };
 
