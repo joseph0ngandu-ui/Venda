@@ -26,22 +26,22 @@ struct AdminPanelScreen: View {
                 HStack {
                     Button(action: { dismiss() }) {
                         Image(systemName: "chevron.left")
-                            .font(.system(size: 16, weight: .semibold))
+                            .font(DesignSystem.Typography.button)
                             .foregroundColor(.vendaInk)
                             .frame(width: 40, height: 40)
                             .background(Color.vendaWhite)
-                            .cornerRadius(12)
+                            .cornerRadius(DesignSystem.Radius.md)
                             .shadow(color: Color.black.opacity(0.05), radius: 4, x: 0, y: 2)
                     }
 
                     Spacer()
 
-                    VStack(spacing: 2) {
+                    VStack(spacing: DesignSystem.Spacing.xs) {
                         Text("Admin Console")
-                            .font(.system(size: 18, weight: .semibold))
+                            .font(DesignSystem.Typography.h4)
                             .foregroundColor(.vendaInk)
                         Text("Live team access management")
-                            .font(.system(size: 11))
+                            .font(DesignSystem.Typography.caption)
                             .foregroundColor(.vendaInkMid)
                     }
 
@@ -49,30 +49,30 @@ struct AdminPanelScreen: View {
 
                     Button(action: { showCreateSheet = true }) {
                         Image(systemName: "person.badge.plus")
-                            .font(.system(size: 14, weight: .semibold))
+                            .font(DesignSystem.Typography.button)
                             .foregroundColor(canEditStaff ? .vendaForest : .vendaInkLt)
                             .frame(width: 40, height: 40)
                             .background(canEditStaff ? Color.vendaForestLt : Color.vendaLine)
-                            .cornerRadius(12)
+                            .cornerRadius(DesignSystem.Radius.md)
                     }
                     .disabled(!canEditStaff)
                 }
-                .padding(.horizontal, 16)
-                .padding(.top, 12)
-                .padding(.bottom, 16)
+                .padding(.horizontal, DesignSystem.Spacing.lg)
+                .padding(.top, DesignSystem.Spacing.md)
+                .padding(.bottom, DesignSystem.Spacing.lg)
 
                 ScrollView {
-                    VStack(spacing: 20) {
+                    VStack(spacing: DesignSystem.Spacing.xl) {
                         VendaCard(backgroundColor: .vendaForestDk) {
-                            VStack(alignment: .leading, spacing: 8) {
+                            VStack(alignment: .leading, spacing: DesignSystem.Spacing.sm) {
                                 Text("Company Code")
-                                    .font(.system(size: 13, weight: .medium))
+                                    .font(DesignSystem.Typography.label)
                                     .foregroundColor(.white.opacity(0.8))
                                 Text(appState.currentUser?.companyCode ?? "VND-ERROR")
-                                    .font(.system(size: 32, weight: .bold))
+                                    .font(DesignSystem.Typography.h1)
                                     .foregroundColor(.vendaOchre)
                                 Text("Share this code with staff, then assign their PINs here.")
-                                    .font(.system(size: 12))
+                                    .font(DesignSystem.Typography.captionSmall)
                                     .foregroundColor(.white.opacity(0.8))
                             }
                             .frame(maxWidth: .infinity, alignment: .leading)
@@ -86,10 +86,10 @@ struct AdminPanelScreen: View {
                             }
                         }
 
-                        VStack(alignment: .leading, spacing: 12) {
+                        VStack(alignment: .leading, spacing: DesignSystem.Spacing.md) {
                             HStack {
                                 Text("Team Directory")
-                                    .font(.system(size: 15, weight: .semibold))
+                                    .font(DesignSystem.Typography.h3)
                                     .foregroundColor(.vendaInk)
                                 Spacer()
                                 if viewModel.isLoading {
@@ -105,7 +105,7 @@ struct AdminPanelScreen: View {
                                     message: "Create staff accounts here so the join-business flow is ready for your whole team."
                                 )
                             } else {
-                                LazyVStack(spacing: 10) {
+                                LazyVStack(spacing: DesignSystem.Spacing.md) {
                                     ForEach(viewModel.staff, id: \.id) { member in
                                         StaffRow(member: member, canEdit: canEditStaff) {
                                             selectedMember = member
@@ -115,8 +115,8 @@ struct AdminPanelScreen: View {
                             }
                         }
                     }
-                    .padding(.horizontal, 16)
-                    .padding(.bottom, 32)
+                    .padding(.horizontal, DesignSystem.Spacing.lg)
+                    .padding(.bottom, DesignSystem.Spacing.xxxl)
                 }
             }
         }
@@ -161,33 +161,33 @@ private struct StaffRow: View {
 
     var body: some View {
         VendaCard {
-            HStack(spacing: 12) {
+            HStack(spacing: DesignSystem.Spacing.md) {
                 ZStack {
                     Circle()
                         .fill(roleColor.opacity(0.18))
-                        .frame(width: 40, height: 40)
+                        .frame(width: DesignSystem.ComponentSize.avatarSmall, height: DesignSystem.ComponentSize.avatarSmall)
                     Text(String(member.name.prefix(1)))
-                        .font(.system(size: 16, weight: .semibold))
+                        .font(DesignSystem.Typography.h4)
                         .foregroundColor(roleColor)
                 }
 
-                VStack(alignment: .leading, spacing: 4) {
+                VStack(alignment: .leading, spacing: DesignSystem.Spacing.xs) {
                     HStack {
                         Text(member.name)
-                            .font(.system(size: 15, weight: .medium))
+                            .font(DesignSystem.Typography.body)
                             .foregroundColor(.vendaInk)
 
                         Text(member.role.rawValue.uppercased())
-                            .font(.system(size: 9, weight: .bold))
+                            .font(DesignSystem.Typography.caption)
                             .foregroundColor(.white)
-                            .padding(.horizontal, 6)
+                            .padding(.horizontal, DesignSystem.Spacing.xs)
                             .padding(.vertical, 2)
                             .background(roleColor)
-                            .cornerRadius(4)
+                            .cornerRadius(DesignSystem.Radius.sm)
                     }
 
                     Text(member.isActive ? "Active team access" : "Inactive")
-                        .font(.system(size: 12))
+                        .font(DesignSystem.Typography.captionSmall)
                         .foregroundColor(.vendaInkMid)
                 }
 
@@ -197,7 +197,7 @@ private struct StaffRow: View {
                     Button(action: onEdit) {
                         Image(systemName: "slider.horizontal.3")
                             .foregroundColor(.vendaInkLt)
-                            .padding(8)
+                            .padding(DesignSystem.Spacing.sm)
                     }
                 }
             }
@@ -252,7 +252,12 @@ private struct StaffEditorSheet: View {
         NavigationStack {
             Form {
                 Section("Profile") {
-                    TextField("Full name", text: $name)
+                    VendaTextField(
+                        label: "Full name",
+                        placeholder: "John Doe",
+                        text: $name
+                    )
+                    
                     Picker("Role", selection: $role) {
                         Text("Admin").tag(StaffRole.admin)
                         Text("Manager").tag(StaffRole.manager)
@@ -261,7 +266,11 @@ private struct StaffEditorSheet: View {
                 }
 
                 Section("Access") {
-                    SecureField(isCreateMode ? "PIN" : "New PIN (optional)", text: $pin)
+                    VendaPasswordField(
+                        label: isCreateMode ? "PIN" : "New PIN (optional)",
+                        placeholder: "••••••••",
+                        text: $pin
+                    )
                     if !isCreateMode {
                         Toggle("Active", isOn: $isActive)
                     }

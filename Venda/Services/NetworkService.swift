@@ -26,7 +26,7 @@ extension NetworkError: LocalizedError {
 }
 
 struct MerchantProfileResponse: Codable {
-    let id: UUID
+    let id: String
     let businessName: String
     let businessType: String
     let phone: String
@@ -37,8 +37,8 @@ struct MerchantProfileResponse: Codable {
 }
 
 struct StaffProfileResponse: Codable, Identifiable {
-    let id: UUID
-    let merchantId: UUID
+    let id: String
+    let merchantId: String
     let name: String
     let role: StaffRole
     let companyCode: String
@@ -55,9 +55,9 @@ struct AuthSessionResponse: Codable {
     let expiresAt: String
     let authType: String
     let companyCode: String
-    let merchantID: UUID
-    let staffID: UUID
-    let role: StaffRole
+    let merchantId: String
+    let staffId: String
+    let role: String
 }
 
 struct AuthIdentityResponse: Codable {
@@ -108,7 +108,7 @@ struct ReportPaymentBreakdown: Codable, Identifiable {
 }
 
 struct ReportTopProduct: Codable, Identifiable {
-    let id: UUID?
+    let id: String?
     let name: String
     let unitsSold: Decimal
     let revenue: Decimal
@@ -123,7 +123,7 @@ struct ReportTrendPoint: Codable, Identifiable {
 }
 
 struct ReportRecentSale: Codable, Identifiable {
-    let id: UUID
+    let id: String
     let reference: String
     let totalAmount: Decimal
     let paymentMethod: String
@@ -143,7 +143,7 @@ protocol NetworkServiceProtocol {
     func getMe(token: String) async throws -> AuthIdentityResponse
     func fetchStaff(token: String) async throws -> [StaffProfileResponse]
     func createStaff(token: String, name: String, role: StaffRole, pin: String) async throws -> StaffProfileResponse
-    func updateStaff(token: String, staffID: UUID, name: String?, role: StaffRole?, pin: String?, isActive: Bool?) async throws -> StaffProfileResponse
+    func updateStaff(token: String, staffID: String, name: String?, role: StaffRole?, pin: String?, isActive: Bool?) async throws -> StaffProfileResponse
     func fetchReportsSummary(token: String, timeframe: String) async throws -> ReportsSummaryResponse
 }
 
@@ -259,7 +259,7 @@ final class NetworkService: NetworkServiceProtocol {
 
     func updateStaff(
         token: String,
-        staffID: UUID,
+        staffID: String,
         name: String?,
         role: StaffRole?,
         pin: String?,
@@ -276,7 +276,7 @@ final class NetworkService: NetworkServiceProtocol {
 
         if shouldPatchProfile {
             let response: StaffMutationResponse = try await performRequest(
-                path: "staff/\(staffID.uuidString)",
+                path: "staff/\(staffID)",
                 method: "PATCH",
                 token: token,
                 body: UpdatePayload(
@@ -295,7 +295,7 @@ final class NetworkService: NetworkServiceProtocol {
             }
 
             let response: StaffMutationResponse = try await performRequest(
-                path: "staff/\(staffID.uuidString)/pin",
+                path: "staff/\(staffID)/pin",
                 method: "POST",
                 token: token,
                 body: PinPayload(pin: pin),

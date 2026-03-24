@@ -85,7 +85,7 @@ class SyncEngine: ObservableObject {
         }
     }
 
-    private func performSyncPush(token: String, merchantID: UUID) async throws {
+    private func performSyncPush(token: String, merchantID: String) async throws {
         let context = CoreDataManager.shared.backgroundContext()
         var payload: [String: Any] = [:]
         var syncedObjectIDs: [NSManagedObjectID] = []
@@ -265,7 +265,7 @@ class SyncEngine: ObservableObject {
         }
     }
 
-    private func performSyncPull(token: String, merchantID: UUID) async throws {
+    private func performSyncPull(token: String, merchantID: String) async throws {
         let lastSyncDate = defaults.object(forKey: lastSyncKey(for: merchantID)) as? Date ?? Date(timeIntervalSince1970: 0)
         var components = URLComponents(url: syncPullURL(), resolvingAgainstBaseURL: false)
         components?.queryItems = [URLQueryItem(name: "updated_after", value: isoString(from: lastSyncDate))]
@@ -298,19 +298,20 @@ class SyncEngine: ObservableObject {
 
     private func fetchUnsynced<T: NSManagedObject>(
         entity: T.Type,
-        merchantID: UUID,
+        merchantID: String,
         in context: NSManagedObjectContext
     ) throws -> [T] {
         let request = NSFetchRequest<T>(entityName: String(describing: T.self))
+        let merchantUUID = UUID(uuidString: merchantID) ?? UUID()
         request.predicate = NSCompoundPredicate(andPredicateWithSubpredicates: [
             NSPredicate(format: "syncedAt == nil"),
-            NSPredicate(format: "merchant.id == %@", merchantID as CVarArg)
+            NSPredicate(format: "merchant.id == %@", merchantUUID as CVarArg)
         ])
         return try context.fetch(request)
     }
 
-    private func lastSyncKey(for merchantID: UUID) -> String {
-        "venda.last.successful.sync.\(merchantID.uuidString)"
+    private func lastSyncKey(for merchantID: String) -> String {
+        "venda.last.successful.sync.\(merchantID)"
     }
 
     private func syncPushURL() -> URL {

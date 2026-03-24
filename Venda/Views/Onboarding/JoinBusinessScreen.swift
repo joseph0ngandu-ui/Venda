@@ -19,30 +19,30 @@ struct JoinBusinessScreen: View {
                 HStack {
                     Button(action: onBack) {
                         Image(systemName: "chevron.left")
-                            .font(.system(size: 16, weight: .semibold))
+                            .font(DesignSystem.Typography.button)
                             .foregroundColor(.vendaInk)
                             .frame(width: 40, height: 40)
                             .background(Color.vendaWhite)
-                            .cornerRadius(12)
+                            .cornerRadius(DesignSystem.Radius.md)
                             .shadow(color: Color.black.opacity(0.05), radius: 4, x: 0, y: 2)
                     }
                     Spacer()
                 }
-                
-                VStack(alignment: .leading, spacing: 8) {
+                .padding(.horizontal, DesignSystem.Spacing.lg)
+                VStack(alignment: .leading, spacing: DesignSystem.Spacing.md) {
                     Text("Join Business")
                         .font(.custom("Fraunces", size: 32))
                         .fontWeight(.semibold)
                         .foregroundColor(.vendaInk)
                     
                     Text("Enter the company code and your pre-assigned staff PIN.")
-                        .font(.system(size: 15, weight: .regular, design: .default))
+                        .font(DesignSystem.Typography.body)
                         .foregroundColor(.vendaInkMid)
                 }
-                .padding(.bottom, 16)
+                .padding(.bottom, DesignSystem.Spacing.md)
                 
                 // Form
-                VStack(spacing: 20) {
+                VStack(spacing: DesignSystem.Spacing.xl) {
                     FormField(
                         label: "Company Code",
                         placeholder: "e.g. VND-5028",
@@ -50,34 +50,35 @@ struct JoinBusinessScreen: View {
                         autocapitalization: .characters
                     )
                     
-                    VStack(alignment: .leading, spacing: 8) {
+                    VStack(alignment: .leading, spacing: DesignSystem.Spacing.sm) {
                         Text("Staff PIN")
-                            .font(.system(size: 13, weight: .semibold, design: .default))
+                            .font(DesignSystem.Typography.label)
                             .foregroundColor(.vendaInkMid)
                         
                         SecureField("••••", text: $staffPin)
-                            .font(.system(size: 15, weight: .medium, design: .default))
+                            .font(DesignSystem.Typography.body)
                             .foregroundColor(.vendaInk)
                             .keyboardType(.numberPad)
-                            .padding(.horizontal, 16)
-                            .frame(height: 52)
+                            .padding(.horizontal, DesignSystem.Spacing.lg)
+                            .frame(height: DesignSystem.ComponentSize.buttonHeightLarge)
                             .background(Color.vendaWhite)
-                            .cornerRadius(12)
+                            .cornerRadius(DesignSystem.Radius.md)
                             .overlay(
-                                RoundedRectangle(cornerRadius: 12)
+                                RoundedRectangle(cornerRadius: DesignSystem.Radius.md)
                                     .stroke(Color.vendaLine, lineWidth: 1)
                             )
+                            .onTapGesture { } // Prevent keyboard from appearing
                     }
                 }
                 
                 if let error = errorMessage {
-                    HStack(spacing: 6) {
+                    HStack(spacing: DesignSystem.Spacing.xs) {
                         Image(systemName: "exclamationmark.circle.fill")
                         Text(error)
                     }
-                    .font(.system(size: 13, weight: .medium))
+                    .font(DesignSystem.Typography.captionSmall)
                     .foregroundColor(.vendaEmber)
-                    .padding(.top, 4)
+                    .padding(.top, DesignSystem.Spacing.xs)
                 }
                 
                 Spacer()
@@ -87,10 +88,10 @@ struct JoinBusinessScreen: View {
                     action: handleJoin
                 )
                 .disabled(companyCode.isEmpty || staffPin.isEmpty || isJoining)
-                .padding(.bottom, 16)
+                .padding(.bottom, DesignSystem.Spacing.md)
             }
-            .padding(.horizontal, 24)
-            .padding(.top, 12)
+            .padding(.horizontal, DesignSystem.Spacing.lg)
+            .padding(.top, DesignSystem.Spacing.md)
         }
         .navigationBarHidden(true)
     }
@@ -119,22 +120,22 @@ private struct FormField: View {
     var autocapitalization: TextInputAutocapitalization = .never
     
     var body: some View {
-        VStack(alignment: .leading, spacing: 8) {
+        VStack(alignment: .leading, spacing: DesignSystem.Spacing.sm) {
             Text(label)
-                .font(.system(size: 13, weight: .semibold, design: .default))
+                .font(DesignSystem.Typography.label)
                 .foregroundColor(.vendaInkMid)
             
             TextField(placeholder, text: $text)
-                .font(.system(size: 15, weight: .medium, design: .default))
+                .font(DesignSystem.Typography.body)
                 .foregroundColor(.vendaInk)
                 .textInputAutocapitalization(autocapitalization)
                 .disableAutocorrection(true)
-                .padding(.horizontal, 16)
-                .frame(height: 52)
+                .padding(.horizontal, DesignSystem.Spacing.lg)
+                .frame(height: DesignSystem.ComponentSize.buttonHeightLarge)
                 .background(Color.vendaWhite)
-                .cornerRadius(12)
+                .cornerRadius(DesignSystem.Radius.md)
                 .overlay(
-                    RoundedRectangle(cornerRadius: 12)
+                    RoundedRectangle(cornerRadius: DesignSystem.Radius.md)
                         .stroke(Color.vendaLine, lineWidth: 1)
                 )
         }

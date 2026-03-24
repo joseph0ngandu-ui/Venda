@@ -21,49 +21,50 @@ struct LoginScreen: View {
                 HStack {
                     Button(action: onBack) {
                         Image(systemName: "chevron.left")
-                            .font(.system(size: 20, weight: .medium))
+                            .font(DesignSystem.Typography.button)
                             .foregroundColor(.white)
                     }
                     Spacer()
                 }
-                .padding(.horizontal, 20)
-                .padding(.top, 16)
-                .padding(.bottom, 60)
+                .padding(.horizontal, DesignSystem.Spacing.lg)
+                .padding(.top, DesignSystem.Spacing.md)
+                .padding(.bottom, DesignSystem.Spacing.xxxl)
 
-                VStack(spacing: 12) {
+                VStack(spacing: DesignSystem.Spacing.md) {
                     Text("venda")
                         .font(.custom("Fraunces", size: 32))
                         .fontWeight(.semibold)
                         .foregroundColor(.white)
                     
                     Text("Sign back into your business")
-                        .font(.system(size: 15, weight: .regular, design: .default))
+                        .font(DesignSystem.Typography.body)
                         .foregroundColor(showError ? .vendaEmberLt : .white.opacity(0.8))
                 }
-                .padding(.bottom, 28)
+                .padding(.bottom, DesignSystem.Spacing.xxl)
 
-                VStack(alignment: .leading, spacing: 8) {
+                VStack(alignment: .leading, spacing: DesignSystem.Spacing.sm) {
                     Text("Phone Number")
-                        .font(.system(size: 12, weight: .semibold, design: .default))
+                        .font(DesignSystem.Typography.label)
                         .foregroundColor(.white.opacity(0.7))
 
                     TextField("260971234567", text: $phone)
                         .textInputAutocapitalization(.never)
                         .keyboardType(.phonePad)
                         .disableAutocorrection(true)
-                        .font(.system(size: 15, weight: .medium, design: .default))
+                        .font(DesignSystem.Typography.body)
                         .foregroundColor(.white)
-                        .padding(.horizontal, 16)
-                        .frame(height: 52)
+                        .padding(.horizontal, DesignSystem.Spacing.lg)
+                        .frame(height: DesignSystem.ComponentSize.buttonHeightLarge)
                         .background(Color.white.opacity(0.12))
-                        .cornerRadius(14)
+                        .cornerRadius(DesignSystem.Radius.lg)
                         .overlay(
-                            RoundedRectangle(cornerRadius: 14)
+                            RoundedRectangle(cornerRadius: DesignSystem.Radius.lg)
                                 .stroke(Color.white.opacity(0.14), lineWidth: 1)
                         )
+                        .onTapGesture { } // Prevent keyboard from appearing
                 }
-                .padding(.horizontal, 24)
-                .padding(.bottom, 24)
+                .padding(.horizontal, DesignSystem.Spacing.lg)
+                .padding(.bottom, DesignSystem.Spacing.lg)
 
                 // PIN Pad tailored for Dark Background
                 StaffPINPadDark(
@@ -78,22 +79,22 @@ struct LoginScreen: View {
 
                 if let errorMessage {
                     Text(errorMessage)
-                        .font(.system(size: 13, weight: .medium, design: .default))
+                        .font(DesignSystem.Typography.captionSmall)
                         .foregroundColor(.vendaEmberLt)
                         .multilineTextAlignment(.center)
-                        .padding(.horizontal, 24)
-                        .padding(.top, 18)
+                        .padding(.horizontal, DesignSystem.Spacing.lg)
+                        .padding(.top, DesignSystem.Spacing.lg)
                 } else if isSubmitting {
                     ProgressView("Signing in...")
                         .tint(.white)
-                        .padding(.top, 18)
+                        .padding(.top, DesignSystem.Spacing.lg)
                 } else {
                     Text("Use the business phone number linked to your account.")
-                        .font(.system(size: 12, weight: .regular, design: .default))
+                        .font(DesignSystem.Typography.captionSmall)
                         .foregroundColor(.white.opacity(0.68))
                         .multilineTextAlignment(.center)
-                        .padding(.horizontal, 24)
-                        .padding(.top, 18)
+                        .padding(.horizontal, DesignSystem.Spacing.lg)
+                        .padding(.top, DesignSystem.Spacing.lg)
                 }
 
                 Spacer()
@@ -215,7 +216,7 @@ private struct StaffPINPadDark: View {
                 }
 
                 HStack(spacing: 12) {
-                    // Bottom Left: FaceID (if available) or empty space
+                    // Bottom Left: FaceID (if available) or empty placeholder
                     if isFaceIDAvailable {
                         Button(action: onFaceIDTap) {
                             Image(systemName: "faceid")
@@ -227,7 +228,14 @@ private struct StaffPINPadDark: View {
                                 .contentShape(Rectangle())
                         }
                     } else {
-                        Spacer()
+                        Button(action: {}) {
+                            Text("")
+                                .frame(height: 64)
+                                .frame(maxWidth: .infinity)
+                                .background(Color.clear)
+                                .cornerRadius(12)
+                        }
+                        .disabled(true)
                     }
                     
                     PINButtonDark(number: "0") {
@@ -275,12 +283,12 @@ private struct PINButtonDark: View {
     var body: some View {
         Button(action: action) {
             Text(number)
-                .font(.system(size: 28, weight: .medium, design: .default))
+                .font(DesignSystem.Typography.h1)
                 .foregroundColor(.white)
                 .frame(height: 64)
                 .frame(maxWidth: .infinity)
                 .background(Color.white.opacity(0.1))
-                .cornerRadius(12)
+                .cornerRadius(DesignSystem.Radius.md)
                 .contentShape(Rectangle())
         }
     }

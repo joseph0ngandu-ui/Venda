@@ -26,82 +26,82 @@ struct FirstProductScreen: View {
                     ProgressDot(isActive: true)
                     Spacer()
                 }
-                .padding(.horizontal, 20)
-                .padding(.top, 16)
-                .padding(.bottom, 24)
+                .padding(.horizontal, DesignSystem.Spacing.lg)
+                .padding(.top, DesignSystem.Spacing.md)
+                .padding(.bottom, DesignSystem.Spacing.xl)
 
                 ScrollView {
-                    VStack(alignment: .leading, spacing: 24) {
-                        VStack(alignment: .leading, spacing: 12) {
+                    VStack(alignment: .leading, spacing: DesignSystem.Spacing.xxl) {
+                        VStack(alignment: .leading, spacing: DesignSystem.Spacing.md) {
                             Text("Add your first item")
-                                .font(.system(size: 24, weight: .semibold, design: .default))
+                                .font(DesignSystem.Typography.h2)
                                 .foregroundColor(.vendaInk)
                             Text("Start building your inventory. You can add more later.")
-                                .font(.system(size: 15, weight: .regular, design: .default))
+                                .font(DesignSystem.Typography.body)
                                 .foregroundColor(.vendaInkMid)
                         }
 
-                        VStack(spacing: 16) {
+                        VStack(spacing: DesignSystem.Spacing.lg) {
                             // Product Name
-                            VStack(alignment: .leading, spacing: 8) {
+                            VStack(alignment: .leading, spacing: DesignSystem.Spacing.sm) {
                                 Text("Item Name")
-                                    .font(.system(size: 12, weight: .semibold, design: .default))
+                                    .font(DesignSystem.Typography.label)
                                     .foregroundColor(.vendaInkLt)
                                 TextField("e.g. Wash and Set", text: $name)
-                                    .padding(16)
+                                    .padding(DesignSystem.Spacing.lg)
                                     .background(Color.vendaWhite)
-                                    .cornerRadius(12)
-                                    .overlay(RoundedRectangle(cornerRadius: 12).stroke(Color.vendaLine, lineWidth: 1))
+                                    .cornerRadius(DesignSystem.Radius.md)
+                                    .overlay(RoundedRectangle(cornerRadius: DesignSystem.Radius.md).stroke(Color.vendaLine, lineWidth: 1))
                             }
 
                             // Category
-                            VStack(alignment: .leading, spacing: 8) {
+                            VStack(alignment: .leading, spacing: DesignSystem.Spacing.sm) {
                                 Text("Category")
-                                    .font(.system(size: 12, weight: .semibold, design: .default))
+                                    .font(DesignSystem.Typography.label)
                                     .foregroundColor(.vendaInkLt)
                                 TextField("e.g. Haircare", text: $category)
-                                    .padding(16)
+                                    .padding(DesignSystem.Spacing.lg)
                                     .background(Color.vendaWhite)
-                                    .cornerRadius(12)
-                                    .overlay(RoundedRectangle(cornerRadius: 12).stroke(Color.vendaLine, lineWidth: 1))
+                                    .cornerRadius(DesignSystem.Radius.md)
+                                    .overlay(RoundedRectangle(cornerRadius: DesignSystem.Radius.md).stroke(Color.vendaLine, lineWidth: 1))
                             }
                         }
 
                         // Pricing Type
-                        VStack(alignment: .leading, spacing: 12) {
+                        VStack(alignment: .leading, spacing: DesignSystem.Spacing.md) {
                             Text("Pricing Strategy")
-                                .font(.system(size: 12, weight: .semibold, design: .default))
+                                .font(DesignSystem.Typography.label)
                                 .foregroundColor(.vendaInkLt)
                             
                             PricingTypePicker(selectedType: $selectedPricingType)
-                                .padding(.horizontal, -20) // Bleed to edges
+                                .padding(.horizontal, -DesignSystem.Spacing.lg) // Bleed to edges
                         }
 
                         // Price Input
-                        VStack(alignment: .leading, spacing: 8) {
+                        VStack(alignment: .leading, spacing: DesignSystem.Spacing.sm) {
                             switch selectedPricingType {
                             case .fixed:
                                 InputField(label: "Selling Price", value: $suggestedPrice)
                             case .flexible:
                                 InputField(label: "Suggested Price", value: $suggestedPrice)
                             case .range:
-                                HStack(spacing: 16) {
+                                HStack(spacing: DesignSystem.Spacing.lg) {
                                     InputField(label: "Minimum Price", value: $minPrice)
                                     InputField(label: "Maximum Price", value: $maxPrice)
                                 }
                             case .open, .service:
                                 Text("Price will be entered at checkout.")
-                                    .font(.system(size: 14, weight: .medium, design: .default))
+                                    .font(DesignSystem.Typography.body)
                                     .foregroundColor(.vendaInkMid)
-                                    .padding(.vertical, 8)
+                                    .padding(.vertical, DesignSystem.Spacing.sm)
                             }
                         }
                     }
-                    .padding(.horizontal, 20)
-                    .padding(.bottom, 40)
+                    .padding(.horizontal, DesignSystem.Spacing.lg)
+                    .padding(.bottom, DesignSystem.Spacing.xxxl)
                 }
 
-                VStack(spacing: 16) {
+                VStack(spacing: DesignSystem.Spacing.lg) {
                     VendaButton(
                         title: "Add Item & Finish",
                         action: {
@@ -121,13 +121,13 @@ struct FirstProductScreen: View {
 
                     Button(action: onSkip) {
                         Text("Skip for now")
-                            .font(.system(size: 15, weight: .medium, design: .default))
+                            .font(DesignSystem.Typography.body)
                             .foregroundColor(.vendaInkMid)
-                            .frame(height: 44)
+                            .frame(height: DesignSystem.ComponentSize.buttonHeightSmall)
                     }
                 }
-                .padding(.horizontal, 20)
-                .padding(.bottom, 16)
+                .padding(.horizontal, DesignSystem.Spacing.lg)
+                .padding(.bottom, DesignSystem.Spacing.md)
             }
         }
         .navigationBarHidden(true)
@@ -139,7 +139,7 @@ private struct ProgressDot: View {
     var body: some View {
         Circle()
             .fill(isActive ? Color.vendaForest : Color.vendaLine)
-            .frame(width: 8, height: 8)
+            .frame(width: DesignSystem.ComponentSize.progressDotSize, height: DesignSystem.ComponentSize.progressDotSize)
     }
 }
 
@@ -148,24 +148,24 @@ private struct InputField: View {
     var value: Binding<Decimal>
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 8) {
+        VStack(alignment: .leading, spacing: DesignSystem.Spacing.sm) {
             Text(label)
-                .font(.system(size: 12, weight: .semibold, design: .default))
+                .font(DesignSystem.Typography.label)
                 .foregroundColor(.vendaInkLt)
             
-            HStack(spacing: 8) {
+            HStack(spacing: DesignSystem.Spacing.sm) {
                 Text("K")
-                    .font(.system(size: 15, weight: .medium, design: .default))
+                    .font(DesignSystem.Typography.body)
                     .foregroundColor(.vendaInkLt)
                 TextField("0.00", value: value, format: .number)
-                    .font(.system(size: 15, weight: .regular, design: .default))
+                    .font(DesignSystem.Typography.body)
                     .foregroundColor(.vendaInk)
                     .keyboardType(.decimalPad)
             }
-            .padding(16)
+            .padding(DesignSystem.Spacing.lg)
             .background(Color.vendaWhite)
-            .cornerRadius(12)
-            .overlay(RoundedRectangle(cornerRadius: 12).stroke(Color.vendaLine, lineWidth: 1))
+            .cornerRadius(DesignSystem.Radius.md)
+            .overlay(RoundedRectangle(cornerRadius: DesignSystem.Radius.md).stroke(Color.vendaLine, lineWidth: 1))
         }
     }
 }

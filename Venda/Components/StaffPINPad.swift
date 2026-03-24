@@ -39,9 +39,15 @@ struct StaffPINPad: View {
                 }
 
                 HStack(spacing: 12) {
-                    // Empty placeholder to align columns perfectly
-                    Color.clear
-                        .frame(maxWidth: .infinity)
+                    // Proper placeholder to align columns with rows above
+                    Button(action: {}) {
+                        Text("")
+                            .frame(height: 64)
+                            .frame(maxWidth: .infinity)
+                            .background(Color.clear)
+                            .cornerRadius(12)
+                    }
+                    .disabled(true)
                         
                     PINButton(number: "0") {
                         appendDigit("0")

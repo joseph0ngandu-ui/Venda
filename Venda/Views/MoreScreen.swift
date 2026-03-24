@@ -39,13 +39,13 @@ struct MoreScreen: View {
                 VStack(spacing: 0) {
                     HStack {
                         Text("Settings")
-                            .font(.system(size: 22, weight: .semibold, design: .default))
+                            .font(DesignSystem.Typography.h3)
                             .foregroundColor(.vendaInk)
                         Spacer()
                     }
-                    .padding(.horizontal, 16)
-                    .padding(.top, 12)
-                    .padding(.bottom, 16)
+                    .padding(.horizontal, DesignSystem.Spacing.lg)
+                    .padding(.top, DesignSystem.Spacing.md)
+                    .padding(.bottom, DesignSystem.Spacing.lg)
 
                     ScrollView(showsIndicators: false) {
                         VStack(spacing: 24) {

@@ -16,27 +16,27 @@ struct MoneyScreen: View {
 
             VStack(spacing: 0) {
                 HStack {
-                    VStack(alignment: .leading, spacing: 2) {
+                    VStack(alignment: .leading, spacing: DesignSystem.Spacing.xs) {
                         Text("Money")
-                            .font(.system(size: 22, weight: .semibold, design: .default))
+                            .font(DesignSystem.Typography.h2)
                             .foregroundColor(.vendaInk)
                         Text("Reconciliation, credit, and cash discipline")
-                            .font(.system(size: 11, weight: .regular, design: .default))
+                            .font(DesignSystem.Typography.caption)
                             .foregroundColor(.vendaInkMid)
                     }
                     Spacer()
                 }
-                .padding(.horizontal, 16)
-                .padding(.top, 12)
-                .padding(.bottom, 12)
+                .padding(.horizontal, DesignSystem.Spacing.lg)
+                .padding(.top, DesignSystem.Spacing.md)
+                .padding(.bottom, DesignSystem.Spacing.md)
 
                 Picker("", selection: $selectedTab) {
                     Text("MoMo").tag(MoneyLedgerTab.momo)
                     Text("Credit").tag(MoneyLedgerTab.credit)
                 }
                 .pickerStyle(.segmented)
-                .padding(.horizontal, 16)
-                .padding(.bottom, 12)
+                .padding(.horizontal, DesignSystem.Spacing.lg)
+                .padding(.bottom, DesignSystem.Spacing.md)
 
                 if selectedTab == .momo {
                     MoMoReconciliationView(
@@ -114,9 +114,9 @@ private struct MoMoReconciliationView: View {
 
     var body: some View {
         ScrollView(showsIndicators: false) {
-            VStack(spacing: 16) {
+            VStack(spacing: DesignSystem.Spacing.lg) {
                 ScrollView(.horizontal, showsIndicators: false) {
-                    HStack(spacing: 8) {
+                    HStack(spacing: DesignSystem.Spacing.sm) {
                         StatusCard(
                             label: "Matched",
                             amount: viewModel.matchedMoMo,
@@ -142,7 +142,7 @@ private struct MoMoReconciliationView: View {
                             count: viewModel.momoTransactions.count
                         )
                     }
-                    .padding(.horizontal, 16)
+                    .padding(.horizontal, DesignSystem.Spacing.lg)
                 }
 
                 HStack {
@@ -154,14 +154,14 @@ private struct MoMoReconciliationView: View {
                         }
                     } label: {
                         Label(filter.rawValue, systemImage: "line.3.horizontal.decrease.circle")
-                            .font(.system(size: 13, weight: .semibold, design: .default))
+                            .font(DesignSystem.Typography.caption)
                             .foregroundColor(.vendaInk)
-                            .padding(.horizontal, 12)
-                            .padding(.vertical, 10)
+                            .padding(.horizontal, DesignSystem.Spacing.sm)
+                            .padding(.vertical, DesignSystem.Spacing.xs)
                             .background(Color.vendaWhite)
-                            .cornerRadius(10)
+                            .cornerRadius(DesignSystem.Radius.md)
                             .overlay(
-                                RoundedRectangle(cornerRadius: 10)
+                                RoundedRectangle(cornerRadius: DesignSystem.Radius.md)
                                     .stroke(Color.vendaLine, lineWidth: 1)
                             )
                     }
@@ -170,22 +170,22 @@ private struct MoMoReconciliationView: View {
 
                     Button(action: onAdd) {
                         Label("Log payment", systemImage: "plus")
-                            .font(.system(size: 13, weight: .semibold, design: .default))
+                            .font(DesignSystem.Typography.caption)
                             .foregroundColor(.vendaForest)
-                            .padding(.horizontal, 12)
-                            .padding(.vertical, 10)
+                            .padding(.horizontal, DesignSystem.Spacing.sm)
+                            .padding(.vertical, DesignSystem.Spacing.xs)
                             .background(Color.vendaForestLt)
-                            .cornerRadius(10)
+                            .cornerRadius(DesignSystem.Radius.md)
                     }
                 }
-                .padding(.horizontal, 16)
+                .padding(.horizontal, DesignSystem.Spacing.lg)
 
-                VStack(alignment: .leading, spacing: 12) {
+                VStack(alignment: .leading, spacing: DesignSystem.Spacing.md) {
                     ScreenSectionHeader(
                         title: "Recent Payments",
                         subtitle: "Review incoming transfers and reconcile them to sales"
                     )
-                    .padding(.horizontal, 16)
+                    .padding(.horizontal, DesignSystem.Spacing.lg)
 
                     if filteredTransactions.isEmpty {
                         EmptyStateCard(
@@ -193,9 +193,9 @@ private struct MoMoReconciliationView: View {
                             title: "No MoMo activity in this view",
                             message: "Use Log payment to register an incoming transfer or switch the filter to inspect other statuses."
                         )
-                        .padding(.horizontal, 16)
+                        .padding(.horizontal, DesignSystem.Spacing.lg)
                     } else {
-                        LazyVStack(spacing: 10) {
+                        LazyVStack(spacing: DesignSystem.Spacing.md) {
                             ForEach(filteredTransactions) { transaction in
                                 TransactionRow(
                                     transaction: transaction,
@@ -206,11 +206,11 @@ private struct MoMoReconciliationView: View {
                                 )
                             }
                         }
-                        .padding(.horizontal, 16)
+                        .padding(.horizontal, DesignSystem.Spacing.lg)
                     }
                 }
             }
-            .padding(.vertical, 16)
+            .padding(.vertical, DesignSystem.Spacing.lg)
         }
     }
 }
@@ -222,9 +222,9 @@ private struct CreditBookView: View {
 
     var body: some View {
         ScrollView(showsIndicators: false) {
-            VStack(spacing: 16) {
+            VStack(spacing: DesignSystem.Spacing.lg) {
                 ScrollView(.horizontal, showsIndicators: false) {
-                    HStack(spacing: 8) {
+                    HStack(spacing: DesignSystem.Spacing.sm) {
                         StatusCard(
                             label: "Outstanding",
                             amount: viewModel.outstandingCredit,
@@ -244,32 +244,32 @@ private struct CreditBookView: View {
                             count: viewModel.creditEntries.count
                         )
                     }
-                    .padding(.horizontal, 16)
+                    .padding(.horizontal, DesignSystem.Spacing.lg)
                 }
 
                 HStack {
                     Text("Track handover balances and customer credit from one place.")
-                        .font(.system(size: 12, weight: .regular, design: .default))
+                        .font(DesignSystem.Typography.captionSmall)
                         .foregroundColor(.vendaInkMid)
                     Spacer()
                     Button(action: onAdd) {
                         Label("Record credit", systemImage: "plus")
-                            .font(.system(size: 13, weight: .semibold, design: .default))
+                            .font(DesignSystem.Typography.caption)
                             .foregroundColor(.vendaEmber)
-                            .padding(.horizontal, 12)
-                            .padding(.vertical, 10)
+                            .padding(.horizontal, DesignSystem.Spacing.sm)
+                            .padding(.vertical, DesignSystem.Spacing.xs)
                             .background(Color.vendaEmberLt)
-                            .cornerRadius(10)
+                            .cornerRadius(DesignSystem.Radius.md)
                     }
                 }
-                .padding(.horizontal, 16)
+                .padding(.horizontal, DesignSystem.Spacing.lg)
 
-                VStack(alignment: .leading, spacing: 12) {
+                VStack(alignment: .leading, spacing: DesignSystem.Spacing.md) {
                     ScreenSectionHeader(
                         title: "Credit Ledger",
                         subtitle: "Outstanding balances, repayments, and due dates"
                     )
-                    .padding(.horizontal, 16)
+                    .padding(.horizontal, DesignSystem.Spacing.lg)
 
                     if viewModel.creditEntries.isEmpty {
                         EmptyStateCard(
@@ -277,9 +277,9 @@ private struct CreditBookView: View {
                             title: "No credit balances right now",
                             message: "When you extend credit, the running balance and repayment history will appear here."
                         )
-                        .padding(.horizontal, 16)
+                        .padding(.horizontal, DesignSystem.Spacing.lg)
                     } else {
-                        LazyVStack(spacing: 10) {
+                        LazyVStack(spacing: DesignSystem.Spacing.md) {
                             ForEach(viewModel.creditEntries) { entry in
                                 CreditEntryRow(
                                     entry: entry,
@@ -288,11 +288,11 @@ private struct CreditBookView: View {
                                 )
                             }
                         }
-                        .padding(.horizontal, 16)
+                        .padding(.horizontal, DesignSystem.Spacing.lg)
                     }
                 }
             }
-            .padding(.vertical, 16)
+            .padding(.vertical, DesignSystem.Spacing.lg)
         }
     }
 }
@@ -305,20 +305,20 @@ private struct StatusCard: View {
 
     var body: some View {
         VendaCard {
-            VStack(alignment: .leading, spacing: 6) {
-                HStack(spacing: 4) {
+            VStack(alignment: .leading, spacing: DesignSystem.Spacing.sm) {
+                HStack(spacing: DesignSystem.Spacing.xs) {
                     Circle()
                         .fill(color)
                         .frame(width: 8, height: 8)
                     Text(label)
-                        .font(.system(size: 10, weight: .medium, design: .default))
+                        .font(DesignSystem.Typography.caption)
                         .foregroundColor(.vendaInkLt)
                 }
                 Text(amount.asZMW())
-                    .font(.system(size: 13, weight: .semibold, design: .default))
+                    .font(DesignSystem.Typography.label)
                     .foregroundColor(color)
                 Text("\(count) entries")
-                    .font(.system(size: 9, weight: .regular, design: .default))
+                    .font(DesignSystem.Typography.captionSmall)
                     .foregroundColor(.vendaInkMid)
             }
             .frame(width: 120, alignment: .leading)
@@ -333,33 +333,33 @@ private struct TransactionRow: View {
 
     var body: some View {
         VendaCard(accentColor: statusColor) {
-            HStack(spacing: 12) {
-                VStack(spacing: 2) {
+            HStack(spacing: DesignSystem.Spacing.md) {
+                VStack(spacing: DesignSystem.Spacing.xs) {
                     Text(String(transaction.reference.suffix(4)))
-                        .font(.system(size: 11, weight: .bold, design: .monospaced))
+                        .font(DesignSystem.Typography.caption)
                         .foregroundColor(.vendaInkMid)
                 }
                 .frame(width: 42, height: 42)
                 .background(Color.vendaParchment)
-                .cornerRadius(10)
+                .cornerRadius(DesignSystem.Radius.md)
 
-                VStack(alignment: .leading, spacing: 4) {
+                VStack(alignment: .leading, spacing: DesignSystem.Spacing.xs) {
                     Text(transaction.senderPhone)
-                        .font(.system(size: 13, weight: .medium, design: .default))
+                        .font(DesignSystem.Typography.body)
                         .foregroundColor(.vendaInk)
                     Text(transaction.reference)
-                        .font(.system(size: 11, weight: .regular, design: .monospaced))
+                        .font(DesignSystem.Typography.captionSmall)
                         .foregroundColor(.vendaInkMid)
                     Text(transaction.timestamp.formatted(date: .abbreviated, time: .shortened))
-                        .font(.system(size: 10, weight: .regular, design: .default))
+                        .font(DesignSystem.Typography.captionSmall)
                         .foregroundColor(.vendaInkLt)
                 }
 
                 Spacer()
 
-                VStack(alignment: .trailing, spacing: 6) {
+                VStack(alignment: .trailing, spacing: DesignSystem.Spacing.sm) {
                     Text(transaction.amount.asZMW())
-                        .font(.system(size: 14, weight: .semibold, design: .default))
+                        .font(DesignSystem.Typography.bodySemibold)
                         .foregroundColor(.vendaInk)
                     ReconciliationStatusBadge(status: transaction.status)
                 }
@@ -396,36 +396,36 @@ private struct CreditEntryRow: View {
 
     var body: some View {
         VendaCard(accentColor: entry.isOverdue ? .vendaOchre : .vendaEmber) {
-            HStack(spacing: 12) {
-                RoundedRectangle(cornerRadius: 10)
+            HStack(spacing: DesignSystem.Spacing.md) {
+                RoundedRectangle(cornerRadius: DesignSystem.Radius.md)
                     .fill(entry.isOverdue ? Color.vendaOchreLt : Color.vendaEmberLt)
                     .frame(width: 42, height: 42)
                     .overlay(
                         Text(String(entry.customerName.prefix(1)).uppercased())
-                            .font(.system(size: 14, weight: .bold, design: .default))
+                            .font(DesignSystem.Typography.h4)
                             .foregroundColor(entry.isOverdue ? .vendaOchreDk : .vendaEmberDk)
                     )
 
-                VStack(alignment: .leading, spacing: 4) {
+                VStack(alignment: .leading, spacing: DesignSystem.Spacing.xs) {
                     Text(entry.customerName)
-                        .font(.system(size: 13, weight: .medium, design: .default))
+                        .font(DesignSystem.Typography.body)
                         .foregroundColor(.vendaInk)
 
                     if let phone = entry.customerPhone, !phone.isEmpty {
                         Text(phone)
-                            .font(.system(size: 11, weight: .regular, design: .default))
+                            .font(DesignSystem.Typography.captionSmall)
                             .foregroundColor(.vendaInkMid)
                     } else {
                         Text("Opened \(entry.lastTransaction.formatted(date: .abbreviated, time: .omitted))")
-                            .font(.system(size: 11, weight: .regular, design: .default))
+                            .font(DesignSystem.Typography.captionSmall)
                             .foregroundColor(.vendaInkMid)
                     }
 
-                    HStack(spacing: 6) {
+                    HStack(spacing: DesignSystem.Spacing.xs) {
                         CreditStatusBadge(status: entry.status, isOverdue: entry.isOverdue)
                         if let dueDate = entry.dueDate {
                             Text("Due \(dueDate.formatted(date: .abbreviated, time: .omitted))")
-                                .font(.system(size: 10, weight: .regular, design: .default))
+                                .font(DesignSystem.Typography.captionSmall)
                                 .foregroundColor(.vendaInkLt)
                         }
                     }
@@ -433,12 +433,12 @@ private struct CreditEntryRow: View {
 
                 Spacer()
 
-                VStack(alignment: .trailing, spacing: 4) {
+                VStack(alignment: .trailing, spacing: DesignSystem.Spacing.xs) {
                     Text(entry.amountOwed.asZMW())
-                        .font(.system(size: 14, weight: .semibold, design: .default))
+                        .font(DesignSystem.Typography.bodySemibold)
                         .foregroundColor(entry.isOverdue ? .vendaOchreDk : .vendaEmberDk)
                     Text("\(entry.repaidAmount.asZMW()) repaid")
-                        .font(.system(size: 10, weight: .regular, design: .default))
+                        .font(DesignSystem.Typography.captionSmall)
                         .foregroundColor(.vendaInkMid)
                 }
 

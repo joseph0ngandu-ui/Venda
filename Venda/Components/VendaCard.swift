@@ -5,21 +5,31 @@ struct VendaCard<Content: View>: View {
     var accentColor: Color? = nil
     var backgroundColor: Color = .vendaWhite
     var borderColor: Color = .vendaLine
+    var elevation: CardElevation = .default_
+    
+    enum CardElevation {
+        case none
+        case subtle
+        case default_
+        case elevated
+    }
 
     init(
         accentColor: Color? = nil,
         backgroundColor: Color = .vendaWhite,
         borderColor: Color = .vendaLine,
+        elevation: CardElevation = .default_,
         @ViewBuilder content: () -> Content
     ) {
         self.accentColor = accentColor
         self.backgroundColor = backgroundColor
         self.borderColor = borderColor
+        self.elevation = elevation
         self.content = content()
     }
 
     var body: some View {
-        HStack(spacing: 12) {
+        HStack(spacing: DesignSystem.Spacing.md) {
             if let accentColor = accentColor {
                 RoundedRectangle(cornerRadius: 4)
                     .fill(accentColor)
@@ -27,14 +37,56 @@ struct VendaCard<Content: View>: View {
             }
 
             content
-                .padding(12)
+                .padding(DesignSystem.Spacing.md)
         }
         .background(backgroundColor)
-        .cornerRadius(12)
+        .cornerRadius(DesignSystem.Radius.md)
         .overlay(
-            RoundedRectangle(cornerRadius: 12)
+            RoundedRectangle(cornerRadius: DesignSystem.Radius.md)
                 .stroke(borderColor, lineWidth: 1)
         )
+        .shadow(
+            color: shadowColor,
+            radius: shadowRadius,
+            x: shadowX,
+            y: shadowY
+        )
+    }
+    
+    private var shadowColor: Color {
+        switch elevation {
+        case .none: return .clear
+        case .subtle: return .black.opacity(0.05)
+        case .default_: return .black.opacity(0.08)
+        case .elevated: return .black.opacity(0.12)
+        }
+    }
+    
+    private var shadowRadius: CGFloat {
+        switch elevation {
+        case .none: return 0
+        case .subtle: return 4
+        case .default_: return 8
+        case .elevated: return 12
+        }
+    }
+    
+    private var shadowX: CGFloat {
+        switch elevation {
+        case .none: return 0
+        case .subtle: return 0
+        case .default_: return 0
+        case .elevated: return 0
+        }
+    }
+    
+    private var shadowY: CGFloat {
+        switch elevation {
+        case .none: return 0
+        case .subtle: return 2
+        case .default_: return 4
+        case .elevated: return 6
+        }
     }
 }
 

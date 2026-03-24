@@ -10,6 +10,7 @@ struct PINSetupScreen: View {
     @State private var showError = false
     @State private var pinPadId = UUID()
     @State private var isSubmitting = false
+    @State private var errorRecoveryTask: Task<Void, Never>?
 
     var body: some View {
         ZStack {
@@ -19,9 +20,9 @@ struct PINSetupScreen: View {
             VStack(spacing: 0) {
                 // Header
                 HStack {
-                    Button(action: onBack) {
+                    Button(action: handleBack) {
                         Image(systemName: "chevron.left")
-                            .font(.system(size: 20, weight: .medium))
+                            .font(DesignSystem.Typography.button)
                             .foregroundColor(.vendaInk)
                     }
                     Spacer()
@@ -32,22 +33,22 @@ struct PINSetupScreen: View {
                     // Hidden view to balance the back button
                     Image(systemName: "chevron.left").opacity(0)
                 }
-                .padding(.horizontal, 20)
-                .padding(.top, 16)
-                .padding(.bottom, 40)
+                .padding(.horizontal, DesignSystem.Spacing.lg)
+                .padding(.top, DesignSystem.Spacing.md)
+                .padding(.bottom, DesignSystem.Spacing.xxxl)
 
-                VStack(spacing: 12) {
+                VStack(spacing: DesignSystem.Spacing.md) {
                     Text(currentStepTitle)
-                        .font(.system(size: 24, weight: .semibold, design: .default))
+                        .font(DesignSystem.Typography.h2)
                         .foregroundColor(showError ? .vendaEmber : .vendaInk)
                     
                     Text(currentStepSubtitle)
-                        .font(.system(size: 15, weight: .regular, design: .default))
+                        .font(DesignSystem.Typography.body)
                         .foregroundColor(showError ? .vendaEmber : .vendaInkMid)
                         .multilineTextAlignment(.center)
-                        .padding(.horizontal, 40)
+                        .padding(.horizontal, DesignSystem.Spacing.xxxl)
                 }
-                .padding(.bottom, 60)
+                .padding(.bottom, DesignSystem.Spacing.xxxl)
 
                 StaffPINPad(
                     onComplete: handlePinEntry,
@@ -60,13 +61,44 @@ struct PINSetupScreen: View {
                 if isSubmitting {
                     ProgressView("Creating your workspace...")
                         .tint(.vendaForest)
-                        .padding(.top, 24)
+                        .padding(.top, DesignSystem.Spacing.xl)
+                } else if showError {
+                    VStack(spacing: DesignSystem.Spacing.md) {
+                        Text(currentStepSubtitle)
+                            .font(DesignSystem.Typography.captionSmall)
+                            .foregroundColor(.vendaEmber)
+                            .multilineTextAlignment(.center)
+                            .padding(.horizontal, DesignSystem.Spacing.lg)
+                            .padding(.top, DesignSystem.Spacing.lg)
+                        
+                        Button(action: handleBack) {
+                            Text("Go back to business details")
+                                .font(DesignSystem.Typography.body)
+                                .foregroundColor(.vendaForest)
+                                .frame(maxWidth: .infinity)
+                                .frame(height: DesignSystem.ComponentSize.buttonHeightSmall)
+                                .background(Color.vendaForestLt)
+                                .cornerRadius(DesignSystem.Radius.md)
+                        }
+                        .padding(.horizontal, DesignSystem.Spacing.lg)
+                        .padding(.bottom, DesignSystem.Spacing.lg)
+                    }
                 }
 
                 Spacer()
             }
         }
         .navigationBarHidden(true)
+        .onDisappear {
+            errorRecoveryTask?.cancel()
+        }
+    }
+    
+    private func handleBack() {
+        // Cancel any pending error recovery
+        errorRecoveryTask?.cancel()
+        errorRecoveryTask = nil
+        onBack()
     }
 
     private func handlePinEntry(_ pin: String) {
@@ -84,12 +116,15 @@ struct PINSetupScreen: View {
                             currentStepSubtitle = submissionError
                         }
 
-                        DispatchQueue.main.asyncAfter(deadline: .now() + 1.6) {
-                            firstPin = nil
-                            showError = false
-                            currentStepTitle = "Create a 4-digit PIN"
-                            currentStepSubtitle = "You'll use this to log in and approve discounts."
-                            pinPadId = UUID()
+                        // Cancel previous recovery task if any
+                        errorRecoveryTask?.cancel()
+                        
+                        // Schedule auto-reset after 3 seconds instead of 1.6
+                        errorRecoveryTask = Task {
+                            try? await Task.sleep(nanoseconds: 3_000_000_000)
+                            if !Task.isCancelled {
+                                resetPINEntry()
+                            }
                         }
                     }
                 }
@@ -100,13 +135,14 @@ struct PINSetupScreen: View {
                     currentStepTitle = "PINs don't match"
                     currentStepSubtitle = "Please try again."
                 }
+                
                 // Reset after delay
-                DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) {
-                    firstPin = nil
-                    showError = false
-                    currentStepTitle = "Create a 4-digit PIN"
-                    currentStepSubtitle = "You'll use this to log in and approve discounts."
-                    pinPadId = UUID()
+                errorRecoveryTask?.cancel()
+                errorRecoveryTask = Task {
+                    try? await Task.sleep(nanoseconds: 1_500_000_000)
+                    if !Task.isCancelled {
+                        resetPINEntry()
+                    }
                 }
             }
         } else {
@@ -115,6 +151,14 @@ struct PINSetupScreen: View {
             currentStepSubtitle = "Enter it one more time."
             pinPadId = UUID()
         }
+    }
+    
+    private func resetPINEntry() {
+        firstPin = nil
+        showError = false
+        currentStepTitle = "Create a 4-digit PIN"
+        currentStepSubtitle = "You'll use this to log in and approve discounts."
+        pinPadId = UUID()
     }
 }
 

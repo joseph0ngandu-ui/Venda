@@ -18,22 +18,22 @@ struct ReportsScreen: View {
                 HStack {
                     Button(action: { dismiss() }) {
                         Image(systemName: "chevron.left")
-                            .font(.system(size: 16, weight: .semibold))
+                            .font(DesignSystem.Typography.button)
                             .foregroundColor(.vendaInk)
                             .frame(width: 40, height: 40)
                             .background(Color.vendaWhite)
-                            .cornerRadius(12)
+                            .cornerRadius(DesignSystem.Radius.md)
                             .shadow(color: Color.black.opacity(0.05), radius: 4, x: 0, y: 2)
                     }
 
                     Spacer()
 
-                    VStack(spacing: 2) {
+                    VStack(spacing: DesignSystem.Spacing.xs) {
                         Text("Analytics")
-                            .font(.system(size: 18, weight: .semibold, design: .default))
+                            .font(DesignSystem.Typography.h4)
                             .foregroundColor(.vendaInk)
                         Text(viewModel.usingOfflineSnapshot ? "Offline snapshot" : "Live business performance")
-                            .font(.system(size: 11, weight: .regular, design: .default))
+                            .font(DesignSystem.Typography.caption)
                             .foregroundColor(.vendaInkMid)
                     }
 
@@ -43,29 +43,29 @@ struct ReportsScreen: View {
                         .fill(Color.clear)
                         .frame(width: 40, height: 40)
                 }
-                .padding(.horizontal, 16)
-                .padding(.top, 12)
-                .padding(.bottom, 16)
+                .padding(.horizontal, DesignSystem.Spacing.lg)
+                .padding(.top, DesignSystem.Spacing.md)
+                .padding(.bottom, DesignSystem.Spacing.lg)
 
                 ScrollView(showsIndicators: false) {
-                    VStack(spacing: 20) {
+                    VStack(spacing: DesignSystem.Spacing.xl) {
                         Picker("", selection: $viewModel.selectedTimeframe) {
                             ForEach(ReportTimeframe.allCases, id: \.rawValue) { timeframe in
                                 Text(timeframe.title).tag(timeframe)
                             }
                         }
                         .pickerStyle(.segmented)
-                        .padding(.horizontal, 16)
+                        .padding(.horizontal, DesignSystem.Spacing.lg)
 
                         VendaCard(backgroundColor: .vendaForestDk) {
-                            VStack(alignment: .leading, spacing: 10) {
+                            VStack(alignment: .leading, spacing: DesignSystem.Spacing.md) {
                                 HStack {
-                                    VStack(alignment: .leading, spacing: 6) {
+                                    VStack(alignment: .leading, spacing: DesignSystem.Spacing.sm) {
                                         Text("Total Revenue")
-                                            .font(.system(size: 13, weight: .medium, design: .default))
+                                            .font(DesignSystem.Typography.label)
                                             .foregroundColor(.white.opacity(0.75))
                                         Text(viewModel.totalRevenue.asZMW())
-                                            .font(.system(size: 30, weight: .bold, design: .default))
+                                            .font(DesignSystem.Typography.h1)
                                             .foregroundColor(.white)
                                     }
                                     Spacer()
@@ -76,23 +76,23 @@ struct ReportsScreen: View {
                                 }
 
                                 Text(viewModel.trendSummary)
-                                    .font(.system(size: 12, weight: .medium, design: .default))
+                                    .font(DesignSystem.Typography.bodySmall)
                                     .foregroundColor(.vendaOchre)
 
                                 if let errorMessage = viewModel.errorMessage, viewModel.usingOfflineSnapshot {
                                     Text("Showing local data because live reports are unavailable: \(errorMessage)")
-                                        .font(.system(size: 11, weight: .regular, design: .default))
+                                        .font(DesignSystem.Typography.captionSmall)
                                         .foregroundColor(.white.opacity(0.72))
                                         .fixedSize(horizontal: false, vertical: true)
                                 }
                             }
                         }
-                        .padding(.horizontal, 16)
+                        .padding(.horizontal, DesignSystem.Spacing.lg)
 
                         LazyVGrid(columns: [
-                            GridItem(.flexible(), spacing: 12),
-                            GridItem(.flexible(), spacing: 12)
-                        ], spacing: 12) {
+                            GridItem(.flexible(), spacing: DesignSystem.Spacing.md),
+                            GridItem(.flexible(), spacing: DesignSystem.Spacing.md)
+                        ], spacing: DesignSystem.Spacing.md) {
                             ScreenMetricCard(
                                 label: "Sales Count",
                                 value: "\(viewModel.salesCount)",
@@ -109,14 +109,14 @@ struct ReportsScreen: View {
                                 tint: .vendaOchre
                             )
                         }
-                        .padding(.horizontal, 16)
+                        .padding(.horizontal, DesignSystem.Spacing.lg)
 
-                        VStack(alignment: .leading, spacing: 14) {
+                        VStack(alignment: .leading, spacing: DesignSystem.Spacing.lg) {
                             ScreenSectionHeader(
                                 title: "Sales Trend",
                                 subtitle: "Revenue distribution for the selected period"
                             )
-                            .padding(.horizontal, 16)
+                            .padding(.horizontal, DesignSystem.Spacing.lg)
 
                             if viewModel.trend.allSatisfy({ $0.value == 0 }) {
                                 EmptyStateCard(
@@ -124,7 +124,7 @@ struct ReportsScreen: View {
                                     title: "Not enough sales data yet",
                                     message: "Complete a few sales and we’ll map the trend here automatically."
                                 )
-                                .padding(.horizontal, 16)
+                                .padding(.horizontal, DesignSystem.Spacing.lg)
                             } else {
                                 VendaCard {
                                     GeometryReader { geometry in
@@ -137,24 +137,24 @@ struct ReportsScreen: View {
                                                 let barHeight = max(CGFloat(ratio) * geometry.size.height, 8)
                                                 let isPeak = point.value == viewModel.maxTrendValue && point.value > 0
 
-                                                VStack(spacing: 8) {
+                                                VStack(spacing: DesignSystem.Spacing.sm) {
                                                     Spacer(minLength: 0)
 
                                                     if isPeak {
                                                         Text(point.value.asZMW())
-                                                            .font(.system(size: 9, weight: .semibold, design: .default))
+                                                            .font(DesignSystem.Typography.caption)
                                                             .foregroundColor(.vendaInkMid)
                                                             .lineLimit(1)
                                                             .minimumScaleFactor(0.7)
                                                     }
 
-                                                    RoundedRectangle(cornerRadius: 6)
+                                                    RoundedRectangle(cornerRadius: DesignSystem.Radius.sm)
                                                         .fill(isPeak ? Color.vendaForest : Color.vendaForestLt)
                                                         .frame(height: barHeight)
-                                                        .padding(.horizontal, 4)
+                                                        .padding(.horizontal, DesignSystem.Spacing.xs)
 
                                                     Text(point.label)
-                                                        .font(.system(size: 11, weight: .medium, design: .default))
+                                                        .font(DesignSystem.Typography.caption)
                                                         .foregroundColor(.vendaInkLt)
                                                         .lineLimit(1)
                                                         .minimumScaleFactor(0.7)
@@ -164,18 +164,18 @@ struct ReportsScreen: View {
                                         }
                                     }
                                     .frame(height: 210)
-                                    .padding(.top, 12)
+                                    .padding(.top, DesignSystem.Spacing.md)
                                 }
-                                .padding(.horizontal, 16)
+                                .padding(.horizontal, DesignSystem.Spacing.lg)
                             }
                         }
 
-                        VStack(alignment: .leading, spacing: 14) {
+                        VStack(alignment: .leading, spacing: DesignSystem.Spacing.lg) {
                             ScreenSectionHeader(
                                 title: "Payment Mix",
                                 subtitle: "How customers are paying right now"
                             )
-                            .padding(.horizontal, 16)
+                            .padding(.horizontal, DesignSystem.Spacing.lg)
 
                             if viewModel.paymentBreakdown.isEmpty {
                                 EmptyStateCard(
@@ -183,23 +183,23 @@ struct ReportsScreen: View {
                                     title: "No payment data available",
                                     message: "Payment channels will appear here once sales start syncing or are recorded locally."
                                 )
-                                .padding(.horizontal, 16)
+                                .padding(.horizontal, DesignSystem.Spacing.lg)
                             } else {
-                                LazyVStack(spacing: 10) {
+                                LazyVStack(spacing: DesignSystem.Spacing.md) {
                                     ForEach(viewModel.paymentBreakdown) { item in
                                         ReportPaymentRow(item: item)
                                     }
                                 }
-                                .padding(.horizontal, 16)
+                                .padding(.horizontal, DesignSystem.Spacing.lg)
                             }
                         }
 
-                        VStack(alignment: .leading, spacing: 14) {
+                        VStack(alignment: .leading, spacing: DesignSystem.Spacing.lg) {
                             ScreenSectionHeader(
                                 title: "Top Performers",
                                 subtitle: "Products or services generating the most revenue"
                             )
-                            .padding(.horizontal, 16)
+                            .padding(.horizontal, DesignSystem.Spacing.lg)
 
                             if viewModel.topProducts.isEmpty {
                                 EmptyStateCard(
@@ -207,18 +207,18 @@ struct ReportsScreen: View {
                                     title: "No product movement yet",
                                     message: "As soon as sales include stocked items or services, top performers will rank themselves here."
                                 )
-                                .padding(.horizontal, 16)
+                                .padding(.horizontal, DesignSystem.Spacing.lg)
                             } else {
-                                LazyVStack(spacing: 10) {
+                                LazyVStack(spacing: DesignSystem.Spacing.md) {
                                     ForEach(viewModel.topProducts) { product in
                                         TopProductRow(name: product.name, sales: product.sales, revenue: product.revenue)
                                     }
                                 }
-                                .padding(.horizontal, 16)
+                                .padding(.horizontal, DesignSystem.Spacing.lg)
                             }
                         }
 
-                        Spacer(minLength: 24)
+                        Spacer(minLength: DesignSystem.Spacing.xl)
                     }
                     .padding(.top, 8)
                 }
@@ -237,19 +237,19 @@ private struct ReportPaymentRow: View {
     var body: some View {
         VendaCard(accentColor: .vendaOchre) {
             HStack {
-                VStack(alignment: .leading, spacing: 4) {
+                VStack(alignment: .leading, spacing: DesignSystem.Spacing.xs) {
                     Text(item.method)
-                        .font(.system(size: 14, weight: .medium, design: .default))
+                        .font(DesignSystem.Typography.body)
                         .foregroundColor(.vendaInk)
                     Text(item.salesCount > 0 ? "\(item.salesCount) sales" : "Local summary")
-                        .font(.system(size: 11, weight: .regular, design: .default))
+                        .font(DesignSystem.Typography.captionSmall)
                         .foregroundColor(.vendaInkMid)
                 }
 
                 Spacer()
 
                 Text(item.amount.asZMW())
-                    .font(.system(size: 14, weight: .semibold, design: .default))
+                    .font(DesignSystem.Typography.bodySemibold)
                     .foregroundColor(.vendaOchreDk)
             }
         }
@@ -264,19 +264,19 @@ private struct TopProductRow: View {
     var body: some View {
         VendaCard {
             HStack {
-                VStack(alignment: .leading, spacing: 4) {
+                VStack(alignment: .leading, spacing: DesignSystem.Spacing.xs) {
                     Text(name)
-                        .font(.system(size: 14, weight: .medium, design: .default))
+                        .font(DesignSystem.Typography.body)
                         .foregroundColor(.vendaInk)
                     Text("\(sales) sold")
-                        .font(.system(size: 11, weight: .regular, design: .default))
+                        .font(DesignSystem.Typography.captionSmall)
                         .foregroundColor(.vendaInkMid)
                 }
 
                 Spacer()
 
                 Text(revenue.asZMW())
-                    .font(.system(size: 14, weight: .semibold, design: .default))
+                    .font(DesignSystem.Typography.bodySemibold)
                     .foregroundColor(.vendaForest)
             }
         }

@@ -27,46 +27,46 @@ struct WelcomeScreen: View {
                 .padding(.bottom, 64)
 
                 // Feature Pills
-                VStack(spacing: 16) {
+                VStack(spacing: DesignSystem.Spacing.lg) {
                     FeaturePill(text: "📦 Track every sale")
                     FeaturePill(text: "💳 Cash & mobile money")
                     FeaturePill(text: "📊 See what's working")
                 }
-                .padding(.bottom, 80)
+                .padding(.bottom, DesignSystem.Spacing.xxxl)
 
                 Spacer()
 
                 // Actions
-                VStack(spacing: 12) {
+                VStack(spacing: DesignSystem.Spacing.md) {
                     Button(action: onGetStarted) {
                         Text("Set up my business")
-                            .font(.system(size: 15, weight: .semibold, design: .default))
+                            .font(DesignSystem.Typography.button)
                             .foregroundColor(.vendaForest)
-                            .frame(height: 52)
+                            .frame(height: DesignSystem.ComponentSize.buttonHeightLarge)
                             .frame(maxWidth: .infinity)
                             .background(Color.vendaWhite)
-                            .cornerRadius(14)
+                            .cornerRadius(DesignSystem.Radius.lg)
                     }
                     
                     Button(action: onJoinBusiness) {
                         Text("Join existing business")
-                            .font(.system(size: 15, weight: .semibold, design: .default))
+                            .font(DesignSystem.Typography.button)
                             .foregroundColor(.vendaWhite)
-                            .frame(height: 52)
+                            .frame(height: DesignSystem.ComponentSize.buttonHeightLarge)
                             .frame(maxWidth: .infinity)
                             .background(Color.white.opacity(0.15))
-                            .cornerRadius(14)
+                            .cornerRadius(DesignSystem.Radius.lg)
                     }
 
                     Button(action: onLogin) {
                         Text("I already have an account")
-                            .font(.system(size: 14, weight: .medium, design: .default))
+                            .font(DesignSystem.Typography.body)
                             .foregroundColor(.white.opacity(0.8))
-                            .padding(.top, 8)
+                            .padding(.top, DesignSystem.Spacing.sm)
                     }
                 }
-                .padding(.horizontal, 24)
-                .padding(.bottom, 32)
+                .padding(.horizontal, DesignSystem.Spacing.lg)
+                .padding(.bottom, DesignSystem.Spacing.lg)
             }
         }
     }
@@ -77,10 +77,10 @@ private struct FeaturePill: View {
 
     var body: some View {
         Text(text)
-            .font(.system(size: 14, weight: .medium, design: .default))
+            .font(DesignSystem.Typography.body)
             .foregroundColor(.white)
-            .padding(.horizontal, 20)
-            .padding(.vertical, 12)
+            .padding(.horizontal, DesignSystem.Spacing.lg)
+            .padding(.vertical, DesignSystem.Spacing.md)
             .background(Color.white.opacity(0.15))
             .clipShape(Capsule())
     }

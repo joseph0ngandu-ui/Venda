@@ -22,56 +22,33 @@ struct StockScreen: View {
             VStack(spacing: 0) {
                 // Header
                 HStack {
-                    VStack(alignment: .leading, spacing: 4) {
+                    VStack(alignment: .leading, spacing: DesignSystem.Spacing.xs) {
                         Text("Inventory")
-                            .font(.system(size: 22, weight: .semibold, design: .default))
+                            .font(DesignSystem.Typography.h3)
                             .foregroundColor(.vendaInk)
                         Text("\(viewModel.products.count) products")
-                            .font(.system(size: 12, weight: .regular, design: .default))
+                            .font(DesignSystem.Typography.caption)
                             .foregroundColor(.vendaInkMid)
                     }
                     Spacer()
                     if appState.currentUser?.role.isAdminOrManager == true {
                         Button(action: { showAddProduct = true }) {
                             Image(systemName: "plus")
-                                .font(.system(size: 16, weight: .semibold))
+                                .font(.system(size: DesignSystem.ComponentSize.iconMedium, weight: .semibold))
                                 .foregroundColor(.white)
-                                .frame(width: 40, height: 40)
+                                .frame(width: DesignSystem.ComponentSize.avatarSmall, height: DesignSystem.ComponentSize.avatarSmall)
                                 .background(Color.vendaForest)
-                                .cornerRadius(10)
+                                .cornerRadius(DesignSystem.Radius.md)
                         }
                     }
                 }
-                .padding(.horizontal, 16)
-                .padding(.top, 12)
-                .padding(.bottom, 8)
+                .padding(.horizontal, DesignSystem.Spacing.lg)
+                .padding(.top, DesignSystem.Spacing.md)
+                .padding(.bottom, DesignSystem.Spacing.md)
 
-                // Search
-                HStack(spacing: 8) {
-                    Image(systemName: "magnifyingglass")
-                        .font(.system(size: 14, weight: .medium))
-                        .foregroundColor(.vendaInkLt)
-                    TextField("Search", text: $searchText)
-                        .font(.system(size: 14, weight: .regular, design: .default))
-                        .foregroundColor(.vendaInk)
-                    if !searchText.isEmpty {
-                        Button(action: { searchText = "" }) {
-                            Image(systemName: "xmark.circle.fill")
-                                .font(.system(size: 14))
-                                .foregroundColor(.vendaInkLt)
-                        }
-                    }
-                }
-                .padding(.horizontal, 12)
-                .padding(.vertical, 10)
-                .background(Color.vendaWhite)
-                .cornerRadius(10)
-                .overlay(
-                    RoundedRectangle(cornerRadius: 10)
-                        .stroke(Color.vendaLine, lineWidth: 1)
-                )
-                .padding(.horizontal, 16)
-                .padding(.bottom, 12)
+                SearchField(text: $searchText, placeholder: "Search products")
+                    .padding(.horizontal, DesignSystem.Spacing.lg)
+                    .padding(.bottom, DesignSystem.Spacing.md)
 
                 // List
                 if filteredProducts.isEmpty {
@@ -193,9 +170,9 @@ private struct AddProductSheet: View {
                     }
                 }
 
-                VStack(spacing: 12) {
-                    VendaTextField(placeholder: "Product name", text: $name)
-                    VendaTextField(placeholder: "Category", text: $category)
+                VStack(spacing: DesignSystem.Spacing.md) {
+                    VendaTextField(label: nil, placeholder: "Product name", text: $name)
+                    VendaTextField(label: nil, placeholder: "Category", text: $category)
                 }
 
                 Text("Pricing type")
@@ -206,12 +183,14 @@ private struct AddProductSheet: View {
 
                 switch selectedPricingType {
                 case .fixed:
-                    VendaTextField(placeholder: "Price", value: $suggestedPrice)
+                    VendaNumberField(label: nil, placeholder: "Price", value: $suggestedPrice)
                 case .flexible:
-                    VendaTextField(placeholder: "Suggested price", value: $suggestedPrice)
+                    VendaNumberField(label: nil, placeholder: "Suggested price", value: $suggestedPrice)
                 case .range:
-                    VendaTextField(placeholder: "Min price", value: $minPrice)
-                    VendaTextField(placeholder: "Max price", value: $maxPrice)
+                    HStack(spacing: DesignSystem.Spacing.lg) {
+                        VendaNumberField(label: nil, placeholder: "Min price", value: $minPrice)
+                        VendaNumberField(label: nil, placeholder: "Max price", value: $maxPrice)
+                    }
                 case .open, .service:
                     EmptyView()
                 }
@@ -243,44 +222,6 @@ private struct AddProductSheet: View {
             .cornerRadius(20)
         }
         .ignoresSafeArea()
-    }
-}
-
-// Consistent text field component for sheets
-private struct VendaTextField: View {
-    let placeholder: String
-    var text: Binding<String>?
-    var value: Binding<Decimal>?
-
-    init(placeholder: String, text: Binding<String>) {
-        self.placeholder = placeholder
-        self.text = text
-        self.value = nil
-    }
-
-    init(placeholder: String, value: Binding<Decimal>) {
-        self.placeholder = placeholder
-        self.text = nil
-        self.value = value
-    }
-
-    var body: some View {
-        Group {
-            if let text = text {
-                TextField(placeholder, text: text)
-                    .font(.system(size: 15, weight: .regular, design: .default))
-                    .foregroundColor(.vendaInk)
-            } else if let value = value {
-                TextField(placeholder, value: value, format: .number)
-                    .font(.system(size: 15, weight: .regular, design: .default))
-                    .foregroundColor(.vendaInk)
-                    .keyboardType(.decimalPad)
-            }
-        }
-        .padding(.horizontal, 14)
-        .padding(.vertical, 12)
-        .background(Color.vendaParchment)
-        .cornerRadius(10)
     }
 }
 

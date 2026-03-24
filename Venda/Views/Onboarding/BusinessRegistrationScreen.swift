@@ -28,99 +28,99 @@ struct BusinessRegistrationScreen: View {
 
             VStack(spacing: 0) {
                 // Header & Progress
-                VStack(spacing: 20) {
+                VStack(spacing: DesignSystem.Spacing.xl) {
                     HStack {
                         ProgressDot(isActive: true)
                         ProgressDot(isActive: false)
                         ProgressDot(isActive: false)
                     }
-                    .padding(.top, 16)
+                    .padding(.top, DesignSystem.Spacing.md)
 
                     Text("Tell us about your business")
-                        .font(.system(size: 24, weight: .semibold, design: .default))
+                        .font(DesignSystem.Typography.h2)
                         .foregroundColor(.vendaInk)
                         .frame(maxWidth: .infinity, alignment: .leading)
                 }
-                .padding(.horizontal, 20)
-                .padding(.bottom, 24)
+                .padding(.horizontal, DesignSystem.Spacing.lg)
+                .padding(.bottom, DesignSystem.Spacing.xl)
 
                 ScrollView {
-                    VStack(spacing: 24) {
+                    VStack(spacing: DesignSystem.Spacing.xl) {
                         // Forms
-                        VStack(spacing: 16) {
-                            VStack(alignment: .leading, spacing: 8) {
+                        VStack(spacing: DesignSystem.Spacing.lg) {
+                            VStack(alignment: .leading, spacing: DesignSystem.Spacing.sm) {
                                 Text("Business Name")
-                                    .font(.system(size: 12, weight: .semibold, design: .default))
+                                    .font(DesignSystem.Typography.label)
                                     .foregroundColor(.vendaInkLt)
                                 TextField("e.g. Woodlands Salon", text: $businessName)
-                                    .padding(16)
+                                    .padding(DesignSystem.Spacing.lg)
                                     .background(Color.vendaWhite)
-                                    .cornerRadius(12)
-                                    .overlay(RoundedRectangle(cornerRadius: 12).stroke(Color.vendaLine, lineWidth: 1))
+                                    .cornerRadius(DesignSystem.Radius.md)
+                                    .overlay(RoundedRectangle(cornerRadius: DesignSystem.Radius.md).stroke(Color.vendaLine, lineWidth: 1))
                             }
 
-                            VStack(alignment: .leading, spacing: 8) {
+                            VStack(alignment: .leading, spacing: DesignSystem.Spacing.sm) {
                                 Text("Your Name")
-                                    .font(.system(size: 12, weight: .semibold, design: .default))
+                                    .font(DesignSystem.Typography.label)
                                     .foregroundColor(.vendaInkLt)
                                 TextField("e.g. John Banda", text: $ownerName)
-                                    .padding(16)
+                                    .padding(DesignSystem.Spacing.lg)
                                     .background(Color.vendaWhite)
-                                    .cornerRadius(12)
-                                    .overlay(RoundedRectangle(cornerRadius: 12).stroke(Color.vendaLine, lineWidth: 1))
+                                    .cornerRadius(DesignSystem.Radius.md)
+                                    .overlay(RoundedRectangle(cornerRadius: DesignSystem.Radius.md).stroke(Color.vendaLine, lineWidth: 1))
                             }
 
-                            VStack(alignment: .leading, spacing: 8) {
+                            VStack(alignment: .leading, spacing: DesignSystem.Spacing.sm) {
                                 Text("Phone Number")
-                                    .font(.system(size: 12, weight: .semibold, design: .default))
+                                    .font(DesignSystem.Typography.label)
                                     .foregroundColor(.vendaInkLt)
                                 
-                                HStack(spacing: 12) {
+                                HStack(spacing: DesignSystem.Spacing.md) {
                                     Text("+260")
-                                        .font(.system(size: 15, weight: .medium, design: .default))
+                                        .font(DesignSystem.Typography.body)
                                         .foregroundColor(.vendaInkMid)
-                                        .padding(.horizontal, 16)
-                                        .padding(.vertical, 16)
+                                        .padding(.horizontal, DesignSystem.Spacing.lg)
+                                        .padding(.vertical, DesignSystem.Spacing.lg)
                                         .background(Color.vendaParchment)
-                                        .cornerRadius(12)
+                                        .cornerRadius(DesignSystem.Radius.md)
                                     
                                     TextField("977 123 456", text: $phone)
                                         .keyboardType(.numberPad)
-                                        .padding(16)
+                                        .padding(DesignSystem.Spacing.lg)
                                         .background(Color.vendaWhite)
-                                        .cornerRadius(12)
-                                        .overlay(RoundedRectangle(cornerRadius: 12).stroke(Color.vendaLine, lineWidth: 1))
+                                        .cornerRadius(DesignSystem.Radius.md)
+                                        .overlay(RoundedRectangle(cornerRadius: DesignSystem.Radius.md).stroke(Color.vendaLine, lineWidth: 1))
                                 }
                             }
                         }
 
                         // Business Type Grid (Static layout to prevent scroll tracking hangs)
-                        VStack(alignment: .leading, spacing: 12) {
+                        VStack(alignment: .leading, spacing: DesignSystem.Spacing.md) {
                             Text("Business Type")
-                                .font(.system(size: 12, weight: .semibold, design: .default))
+                                .font(DesignSystem.Typography.label)
                                 .foregroundColor(.vendaInkLt)
                             
-                            VStack(spacing: 12) {
+                            VStack(spacing: DesignSystem.Spacing.md) {
                                 // Row 1
-                                HStack(spacing: 12) {
+                                HStack(spacing: DesignSystem.Spacing.md) {
                                     BusinessTypeCard(title: "Salon / Barber", icon: "scissors", isSelected: selectedType == "Salon / Barber") { selectedType = "Salon / Barber" }
                                     BusinessTypeCard(title: "Mini Mart", icon: "cart.fill", isSelected: selectedType == "Mini Mart") { selectedType = "Mini Mart" }
                                 }
                                 // Row 2
-                                HStack(spacing: 12) {
+                                HStack(spacing: DesignSystem.Spacing.md) {
                                     BusinessTypeCard(title: "Café & Food", icon: "cup.and.saucer.fill", isSelected: selectedType == "Café & Food") { selectedType = "Café & Food" }
                                     BusinessTypeCard(title: "Pharmacy", icon: "cross.case.fill", isSelected: selectedType == "Pharmacy") { selectedType = "Pharmacy" }
                                 }
                                 // Row 3
-                                HStack(spacing: 12) {
+                                HStack(spacing: DesignSystem.Spacing.md) {
                                     BusinessTypeCard(title: "Fashion", icon: "tshirt.fill", isSelected: selectedType == "Fashion") { selectedType = "Fashion" }
                                     BusinessTypeCard(title: "Other", icon: "briefcase.fill", isSelected: selectedType == "Other") { selectedType = "Other" }
                                 }
                             }
                         }
                     }
-                    .padding(.horizontal, 20)
-                    .padding(.bottom, 40)
+                    .padding(.horizontal, DesignSystem.Spacing.lg)
+                    .padding(.bottom, DesignSystem.Spacing.xxxl)
                 }
                 .scrollDismissesKeyboard(.interactively)
 
@@ -131,8 +131,8 @@ struct BusinessRegistrationScreen: View {
                     },
                     isEnabled: isValid
                 )
-                .padding(.horizontal, 20)
-                .padding(.bottom, 16)
+                .padding(.horizontal, DesignSystem.Spacing.lg)
+                .padding(.bottom, DesignSystem.Spacing.md)
             }
         }
         .navigationBarHidden(true)
@@ -144,7 +144,7 @@ private struct ProgressDot: View {
     var body: some View {
         Circle()
             .fill(isActive ? Color.vendaForest : Color.vendaLine)
-            .frame(width: 8, height: 8)
+            .frame(width: DesignSystem.ComponentSize.progressDotSize, height: DesignSystem.ComponentSize.progressDotSize)
     }
 }
 
@@ -156,19 +156,19 @@ private struct BusinessTypeCard: View {
 
     var body: some View {
         Button(action: action) {
-            VStack(spacing: 12) {
+            VStack(spacing: DesignSystem.Spacing.md) {
                 Image(systemName: icon)
                     .font(.system(size: 24))
                 Text(title)
-                    .font(.system(size: 13, weight: .medium, design: .default))
+                    .font(DesignSystem.Typography.bodySemibold)
             }
             .frame(maxWidth: .infinity)
-            .frame(height: 88)
+            .frame(height: DesignSystem.ComponentSize.businessTypeCardHeight)
             .foregroundColor(isSelected ? .vendaForestDk : .vendaInkMid)
             .background(isSelected ? Color.vendaForestLt : Color.vendaParchment)
-            .cornerRadius(12)
+            .cornerRadius(DesignSystem.Radius.md)
             .overlay(
-                RoundedRectangle(cornerRadius: 12)
+                RoundedRectangle(cornerRadius: DesignSystem.Radius.md)
                     .stroke(isSelected ? Color.vendaForest : Color.vendaLine, lineWidth: isSelected ? 1.5 : 1)
             )
         }

@@ -5,43 +5,53 @@ struct CustomTabBar: View {
 
     var body: some View {
         VStack(spacing: 0) {
-            HStack(spacing: 8) {
+            VStack(spacing: DesignSystem.Spacing.sm) {
                 ForEach(VendaTab.allCases, id: \.self) { tab in
                     Button {
                         withAnimation(.spring(response: 0.34, dampingFraction: 0.82)) {
                             selectedTab = tab
                         }
                     } label: {
-                        VStack(spacing: 5) {
+                        VStack(spacing: DesignSystem.Spacing.xs) {
                             Image(systemName: tab.iconName)
-                                .font(.system(size: 17, weight: .semibold))
+                                .font(.system(size: DesignSystem.ComponentSize.iconMedium, weight: .semibold))
                             Text(tab.title)
-                                .font(.system(size: 10, weight: .semibold, design: .default))
+                                .font(DesignSystem.Typography.caption)
                         }
                         .foregroundColor(selectedTab == tab ? .vendaForestDk : .vendaInkLt)
                         .frame(maxWidth: .infinity)
-                        .padding(.vertical, 10)
+                        .padding(.vertical, DesignSystem.Spacing.lg)
                         .background(selectedTab == tab ? Color.vendaForestLt : Color.clear)
-                        .cornerRadius(14)
+                        .cornerRadius(DesignSystem.Radius.lg)
                         .overlay(
-                            RoundedRectangle(cornerRadius: 14)
-                                .stroke(selectedTab == tab ? Color.vendaForest.opacity(0.18) : Color.clear, lineWidth: 1)
+                            RoundedRectangle(cornerRadius: DesignSystem.Radius.lg)
+                                .stroke(
+                                    selectedTab == tab ? Color.vendaForest.opacity(0.18) : Color.clear,
+                                    lineWidth: 1
+                                )
                         )
                     }
                     .buttonStyle(PlainButtonStyle())
+                    .accessibilityLabel(tab.title)
+                    .accessibilityAddTraits(selectedTab == tab ? .isSelected : [])
                 }
             }
-            .padding(10)
+            .padding(DesignSystem.Spacing.md)
             .background(Color.vendaWhite)
-            .cornerRadius(22)
+            .cornerRadius(DesignSystem.Radius.xl)
             .overlay(
-                RoundedRectangle(cornerRadius: 22)
+                RoundedRectangle(cornerRadius: DesignSystem.Radius.xl)
                     .stroke(Color.vendaLine, lineWidth: 1)
             )
-            .shadow(color: Color.black.opacity(0.06), radius: 12, x: 0, y: 6)
-            .padding(.horizontal, 16)
-            .padding(.top, 8)
-            .padding(.bottom, 10)
+            .shadow(
+                color: Color.black.opacity(0.06),
+                radius: DesignSystem.Shadow.elevated.radius,
+                x: 0,
+                y: DesignSystem.Shadow.elevated.y
+            )
+            .padding(.horizontal, DesignSystem.Spacing.lg)
+            .padding(.top, DesignSystem.Spacing.md)
+            .padding(.bottom, DesignSystem.Spacing.md + 8) // Extra padding for safe area
         }
         .background(Color.vendaSand)
     }

@@ -5,15 +5,15 @@ struct ScreenSectionHeader: View {
     var subtitle: String? = nil
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 4) {
+        VStack(alignment: .leading, spacing: DesignSystem.Spacing.xs) {
             Text(title.uppercased())
-                .font(.system(size: 11, weight: .semibold, design: .default))
+                .font(DesignSystem.Typography.caption)
                 .tracking(0.9)
                 .foregroundColor(.vendaInkLt)
 
             if let subtitle {
                 Text(subtitle)
-                    .font(.system(size: 13, weight: .regular, design: .default))
+                    .font(DesignSystem.Typography.bodySmall)
                     .foregroundColor(.vendaInkMid)
             }
         }
@@ -29,32 +29,36 @@ struct ScreenMetricCard: View {
 
     var body: some View {
         VendaCard(accentColor: tint) {
-            VStack(alignment: .leading, spacing: 10) {
-                HStack(alignment: .top) {
-                    VStack(alignment: .leading, spacing: 4) {
+            VStack(alignment: .leading, spacing: DesignSystem.Spacing.lg) {
+                HStack(alignment: .top, spacing: DesignSystem.Spacing.lg) {
+                    VStack(alignment: .leading, spacing: DesignSystem.Spacing.xs) {
                         Text(label)
-                            .font(.system(size: 11, weight: .medium, design: .default))
+                            .font(DesignSystem.Typography.caption)
                             .foregroundColor(.vendaInkLt)
                         Text(value)
-                            .font(.system(size: 18, weight: .semibold, design: .default))
+                            .font(DesignSystem.Typography.h3)
                             .foregroundColor(.vendaInk)
+                            .lineLimit(1)
                     }
 
-                    Spacer()
+                    Spacer(minLength: 0)
 
                     if let icon {
                         Image(systemName: icon)
-                            .font(.system(size: 14, weight: .semibold))
+                            .font(.system(size: DesignSystem.ComponentSize.iconMedium, weight: .semibold))
                             .foregroundColor(tint)
-                            .frame(width: 28, height: 28)
+                            .frame(
+                                width: DesignSystem.ComponentSize.avatarSmall,
+                                height: DesignSystem.ComponentSize.avatarSmall
+                            )
                             .background(tint.opacity(0.12))
-                            .cornerRadius(8)
+                            .cornerRadius(DesignSystem.Radius.sm)
                     }
                 }
 
                 if let detail {
                     Text(detail)
-                        .font(.system(size: 10, weight: .regular, design: .default))
+                        .font(DesignSystem.Typography.captionSmall)
                         .foregroundColor(.vendaInkMid)
                 }
             }
@@ -72,30 +76,38 @@ struct EmptyStateCard: View {
 
     var body: some View {
         VendaCard {
-            VStack(spacing: 14) {
+            VStack(spacing: DesignSystem.Spacing.xl) {
                 Image(systemName: icon)
-                    .font(.system(size: 30, weight: .light))
+                    .font(.system(size: 40, weight: .light))
                     .foregroundColor(.vendaForest)
-                    .frame(width: 56, height: 56)
+                    .frame(
+                        width: DesignSystem.ComponentSize.avatarLarge,
+                        height: DesignSystem.ComponentSize.avatarLarge
+                    )
                     .background(Color.vendaForestLt)
-                    .cornerRadius(16)
+                    .cornerRadius(DesignSystem.Radius.lg)
 
-                VStack(spacing: 6) {
+                VStack(spacing: DesignSystem.Spacing.md) {
                     Text(title)
-                        .font(.system(size: 16, weight: .semibold, design: .default))
+                        .font(DesignSystem.Typography.h4)
                         .foregroundColor(.vendaInk)
                     Text(message)
-                        .font(.system(size: 13, weight: .regular, design: .default))
+                        .font(DesignSystem.Typography.bodySmall)
                         .foregroundColor(.vendaInkMid)
                         .multilineTextAlignment(.center)
                 }
 
-                if let actionTitle, let action {
-                    VendaButton(title: actionTitle, action: action, style: actionStyle)
+                if let actionTitle = actionTitle, let action = action {
+                    VendaButton(
+                        title: actionTitle,
+                        action: action,
+                        style: actionStyle,
+                        size: .medium
+                    )
                 }
             }
             .frame(maxWidth: .infinity)
-            .padding(.vertical, 6)
+            .padding(.vertical, DesignSystem.Spacing.md)
         }
     }
 }
@@ -108,30 +120,37 @@ struct ProfileSummaryCard: View {
 
     var body: some View {
         VendaCard(backgroundColor: .vendaWhite, borderColor: .vendaLine) {
-            HStack(spacing: 14) {
+            HStack(spacing: DesignSystem.Spacing.lg) {
                 Circle()
                     .fill(Color.vendaForest)
-                    .frame(width: 52, height: 52)
+                    .frame(
+                        width: DesignSystem.ComponentSize.avatarMedium,
+                        height: DesignSystem.ComponentSize.avatarMedium
+                    )
                     .overlay(
                         Text(initials.uppercased())
-                            .font(.system(size: 16, weight: .bold, design: .default))
+                            .font(DesignSystem.Typography.h4)
                             .foregroundColor(.white)
                     )
+                    .accessibilityLabel("\(name) avatar")
 
-                VStack(alignment: .leading, spacing: 6) {
-                    Text(name)
-                        .font(.system(size: 18, weight: .semibold, design: .default))
-                        .foregroundColor(.vendaInk)
-                    Text(subtitle)
-                        .font(.system(size: 13, weight: .regular, design: .default))
-                        .foregroundColor(.vendaInkMid)
+                VStack(alignment: .leading, spacing: DesignSystem.Spacing.md) {
+                    VStack(alignment: .leading, spacing: DesignSystem.Spacing.xs) {
+                        Text(name)
+                            .font(DesignSystem.Typography.h4)
+                            .foregroundColor(.vendaInk)
+                        Text(subtitle)
+                            .font(DesignSystem.Typography.bodySmall)
+                            .foregroundColor(.vendaInkMid)
+                    }
+
                     Text(badgeTitle)
-                        .font(.system(size: 10, weight: .semibold, design: .default))
+                        .font(DesignSystem.Typography.captionSmall)
                         .foregroundColor(.vendaForestDk)
-                        .padding(.horizontal, 8)
-                        .padding(.vertical, 4)
+                        .padding(.horizontal, DesignSystem.Spacing.md)
+                        .padding(.vertical, DesignSystem.Spacing.xs)
                         .background(Color.vendaForestLt)
-                        .cornerRadius(999)
+                        .cornerRadius(DesignSystem.Radius.full)
                 }
 
                 Spacer(minLength: 0)

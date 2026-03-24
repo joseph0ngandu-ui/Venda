@@ -584,7 +584,7 @@ final class PersistenceService {
         request.predicate = NSPredicate(format: "id == %@", currentUser.merchantID as CVarArg)
         let merchant = (try? context.fetch(request).first) ?? Merchant(context: context)
 
-        merchant.id = currentUser.merchantID
+        merchant.id = UUID(uuidString: currentUser.merchantID) ?? UUID()
         merchant.name = currentUser.businessName
         merchant.businessName = currentUser.businessName
         merchant.businessType = currentUser.businessType
@@ -604,7 +604,7 @@ final class PersistenceService {
         request.predicate = NSPredicate(format: "id == %@", currentUser.id as CVarArg)
         let staff = (try? context.fetch(request).first) ?? Staff(context: context)
 
-        staff.id = currentUser.id
+        staff.id = UUID(uuidString: currentUser.id) ?? UUID()
         staff.name = currentUser.name
         staff.role = currentUser.role.rawValue
         staff.isActive = true

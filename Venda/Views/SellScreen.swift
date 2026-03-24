@@ -23,21 +23,21 @@ struct SellScreen: View {
                 .ignoresSafeArea()
 
             VStack(spacing: 0) {
-                VStack(spacing: 14) {
-                    VStack(alignment: .leading, spacing: 8) {
+                VStack(spacing: DesignSystem.Spacing.lg) {
+                    VStack(alignment: .leading, spacing: DesignSystem.Spacing.md) {
                         Text("Point of Sale")
-                            .font(.system(size: 24, weight: .semibold, design: .default))
+                            .font(DesignSystem.Typography.h2)
                             .foregroundColor(.vendaInk)
-                        Text("Search products, sell quickly, and keep the checkout line moving.")
-                            .font(.system(size: 14, weight: .regular, design: .default))
+                        Text("Search products, add to cart, and checkout quickly.")
+                            .font(DesignSystem.Typography.bodySmall)
                             .foregroundColor(.vendaInkMid)
                     }
 
                     LazyVGrid(columns: [
-                        GridItem(.flexible(), spacing: 12),
-                        GridItem(.flexible(), spacing: 12),
-                        GridItem(.flexible(), spacing: 12)
-                    ], spacing: 12) {
+                        GridItem(.flexible(), spacing: DesignSystem.Spacing.md),
+                        GridItem(.flexible(), spacing: DesignSystem.Spacing.md),
+                        GridItem(.flexible(), spacing: DesignSystem.Spacing.md)
+                    ], spacing: DesignSystem.Spacing.md) {
                         ScreenMetricCard(
                             label: "Products",
                             value: "\(stockViewModel.products.count)",
@@ -61,13 +61,13 @@ struct SellScreen: View {
                         )
                     }
                 }
-                .padding(.horizontal, 16)
-                .padding(.top, 12)
-                .padding(.bottom, 10)
+                .padding(.horizontal, DesignSystem.Spacing.lg)
+                .padding(.top, DesignSystem.Spacing.md)
+                .padding(.bottom, DesignSystem.Spacing.md)
 
                 SearchField(text: $searchText, placeholder: "Search products")
-                    .padding(.horizontal, 16)
-                    .padding(.bottom, 12)
+                    .padding(.horizontal, DesignSystem.Spacing.lg)
+                    .padding(.bottom, DesignSystem.Spacing.md)
 
                 if filteredProducts.isEmpty {
                     ScrollView {
@@ -438,39 +438,6 @@ private struct SaleCompletionView: View {
                 showCheckmark = true
             }
         }
-    }
-}
-
-private struct SearchField: View {
-    @Binding var text: String
-    let placeholder: String
-
-    var body: some View {
-        HStack(spacing: 10) {
-            Image(systemName: "magnifyingglass")
-                .font(.system(size: 14, weight: .medium))
-                .foregroundColor(.vendaInkLt)
-
-            TextField(placeholder, text: $text)
-                .font(.system(size: 14, weight: .regular, design: .default))
-                .foregroundColor(.vendaInk)
-
-            if !text.isEmpty {
-                Button(action: { text = "" }) {
-                    Image(systemName: "xmark.circle.fill")
-                        .font(.system(size: 14))
-                        .foregroundColor(.vendaInkLt)
-                }
-            }
-        }
-        .padding(.horizontal, 14)
-        .padding(.vertical, 12)
-        .background(Color.vendaWhite)
-        .cornerRadius(14)
-        .overlay(
-            RoundedRectangle(cornerRadius: 14)
-                .stroke(Color.vendaLine, lineWidth: 1)
-        )
     }
 }
 

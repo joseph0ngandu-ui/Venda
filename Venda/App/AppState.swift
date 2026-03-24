@@ -13,8 +13,8 @@ enum StaffRole: String, Codable {
 }
 
 struct CurrentUser: Codable {
-    var id: UUID
-    var merchantID: UUID
+    var id: String
+    var merchantID: String
     var name: String
     var role: StaffRole
     var companyCode: String
