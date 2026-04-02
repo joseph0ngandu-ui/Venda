@@ -3,10 +3,13 @@ import SwiftUI
 struct OnboardingFlow: View {
     @EnvironmentObject var appState: AppState
     @EnvironmentObject var stockViewModel: StockViewModel
-    @State private var path = NavigationPath()
+    @State private var path: [Route]
     @State private var registrationDraft: RegistrationDraft?
-    @State private var pendingSession: AuthenticatedSession?
     @State private var errorMessage: String?
+
+    init(resumeRoute: Route? = nil) {
+        _path = State(initialValue: resumeRoute.map { [$0] } ?? [])
+    }
 
     var body: some View {
         NavigationStack(path: $path) {
@@ -15,50 +18,7 @@ struct OnboardingFlow: View {
                 onJoinBusiness: { path.append(Route.joinBusiness) },
                 onLogin: { path.append(Route.login) }
             )
-            .navigationDestination(for: Route.self) { route in
-                switch route {
-                case .register:
-                    BusinessRegistrationScreen { name, owner, phone, type in
-                        registrationDraft = RegistrationDraft(
-                            businessName: name,
-                            ownerName: owner,
-                            phone: phone,
-                            businessType: type
-                        )
-                        path.append(Route.pinSetup(name: name, owner: owner, phone: phone, type: type))
-                    }
-                case .pinSetup(_, _, _, _):
-                    PINSetupScreen(
-                        onComplete: { pin in
-                            await handleRegistration(pin: pin)
-                        },
-                        onBack: { path.removeLast() }
-                    )
-                case .firstProduct:
-                    FirstProductScreen(
-                        onComplete: { product in
-                            completeOnboarding(product: product)
-                        },
-                        onSkip: {
-                            completeOnboarding(product: nil)
-                        }
-                    )
-                case .joinBusiness:
-                    JoinBusinessScreen(
-                        onSubmit: { companyCode, pin in
-                            await handleStaffJoin(companyCode: companyCode, pin: pin)
-                        },
-                        onBack: { path.removeLast() }
-                    )
-                case .login:
-                    LoginScreen(
-                        onSubmit: { phone, pin in
-                            await handleMerchantLogin(phone: phone, pin: pin)
-                        },
-                        onBack: { path.removeLast() }
-                    )
-                }
-            }
+            .navigationDestination(for: Route.self, destination: destinationView)
             .alert("We couldn't complete that action", isPresented: errorAlertPresented) {
                 Button("OK", role: .cancel) {
                     errorMessage = nil
@@ -80,20 +40,77 @@ struct OnboardingFlow: View {
         )
     }
 
+    @ViewBuilder
+    private func destinationView(for route: Route) -> some View {
+        switch route {
+        case .register:
+            registrationScreen
+        case .pinSetup:
+            pinSetupScreen
+        case .firstProduct:
+            firstProductScreen
+        case .joinBusiness:
+            joinBusinessScreen
+        case .login:
+            loginScreen
+        }
+    }
+
+    private var registrationScreen: some View {
+        BusinessRegistrationScreen(onNext: handleRegistrationDetails)
+    }
+
+    private var pinSetupScreen: some View {
+        PINSetupScreen(
+            onComplete: handleRegistration,
+            onBack: popLastRoute
+        )
+    }
+
+    private var firstProductScreen: some View {
+        FirstProductScreen(
+            onComplete: completeOnboarding,
+            onSkip: skipFirstProduct
+        )
+    }
+
+    private var joinBusinessScreen: some View {
+        JoinBusinessScreen(
+            onSubmit: handleStaffJoin,
+            onBack: popLastRoute
+        )
+    }
+
+    private var loginScreen: some View {
+        LoginScreen(
+            onSubmit: handleMerchantLogin,
+            onBack: popLastRoute
+        )
+    }
+
+    private func handleRegistrationDetails(name: String, owner: String, phone: String, type: String) {
+        registrationDraft = RegistrationDraft(
+            businessName: name,
+            ownerName: owner,
+            phone: phone,
+            businessType: type
+        )
+        path.append(Route.pinSetup)
+    }
+
     private func handleRegistration(pin: String) async -> String? {
         guard let registrationDraft else {
             return "We lost your business details. Please go back and try again."
         }
 
         do {
-            let session = try await NetworkService.shared.register(
+            try await appState.registerBusiness(
                 businessName: registrationDraft.businessName,
                 ownerName: registrationDraft.ownerName,
                 businessType: registrationDraft.businessType,
                 phone: registrationDraft.phone,
                 pin: pin
             )
-            pendingSession = session
             path.append(Route.firstProduct)
             return nil
         } catch {
@@ -103,8 +120,7 @@ struct OnboardingFlow: View {
 
     private func handleMerchantLogin(phone: String, pin: String) async -> String? {
         do {
-            let session = try await NetworkService.shared.loginMerchant(phone: phone, pin: pin)
-            appState.applyAuthenticatedSession(session)
+            try await appState.loginMerchant(phone: phone, pin: pin)
             return nil
         } catch {
             return error.localizedDescription
@@ -113,19 +129,21 @@ struct OnboardingFlow: View {
 
     private func handleStaffJoin(companyCode: String, pin: String) async -> String? {
         do {
-            let session = try await NetworkService.shared.joinBusiness(companyCode: companyCode, pin: pin)
-            appState.applyAuthenticatedSession(session)
+            try await appState.joinBusiness(companyCode: companyCode, pin: pin)
             return nil
         } catch {
             return error.localizedDescription
         }
     }
 
+    private func skipFirstProduct() {
+        completeOnboarding(product: nil)
+    }
+
     private func completeOnboarding(product: ProductModel?) {
-        if let pendingSession {
-            appState.applyAuthenticatedSession(pendingSession)
-        } else {
+        guard appState.isAuthenticated else {
             errorMessage = "Your account was created, but we could not restore the session. Please sign in."
+            return
         }
 
         if let product {
@@ -133,15 +151,20 @@ struct OnboardingFlow: View {
             SyncEngine.shared.triggerSync()
         }
 
-        self.pendingSession = nil
+        appState.completePendingOnboarding()
         registrationDraft = nil
-        path = NavigationPath()
+        path = []
+    }
+
+    private func popLastRoute() {
+        guard !path.isEmpty else { return }
+        path.removeLast()
     }
     
     enum Route: Hashable {
         case register
         case joinBusiness
-        case pinSetup(name: String, owner: String, phone: String, type: String)
+        case pinSetup
         case firstProduct
         case login
     }

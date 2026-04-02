@@ -1,92 +1,109 @@
 # Known Issues
 
-Verified against the repository on March 24, 2026.
+Verified against the working tree on April 2, 2026.
 
-## iOS Build Failure
-
-Files:
-
-- `Venda/Views/Onboarding/JoinBusinessScreen.swift`
-
-Issue:
-
-- `xcodebuild -scheme Venda -project Venda.xcodeproj -destination 'generic/platform=iOS Simulator' build` currently fails
-- The observed compiler error is `type 'TextInputAutocapitalization' has no member 'allCharacters'`
-- The failure is triggered from `JoinBusinessScreen.swift`
-
-## Hard-Coded Backend URLs In iOS
+## Default iOS API Target Still Falls Back To Hosted Backend
 
 Files:
 
 - `Venda/Services/NetworkService.swift`
-- `Venda/Services/SyncEngine.swift`
+- `Venda.xcodeproj/project.pbxproj`
 
 Issue:
 
-- Both services point to a fixed Tailscale Funnel URL
-- Local backend development is not configurable from project settings or environment-specific config
+- The app still ships with a built-in hosted fallback URL: `https://homeserver.taildbc5d3.ts.net/api/v1`
+- Source code supports overrides, but no shared scheme setting or checked-in Info.plist key is configured in the project
+- The project also does not include an App Transport Security exception for plain local `http://` endpoints
 
-## Incomplete Backend Wiring In Onboarding
+## Registration Session Is Deferred Until After First-Product Step
 
-File:
+Files:
 
 - `Venda/Views/Onboarding/OnboardingFlow.swift`
 
 Issue:
 
-- Registration and login flows still complete using mocked users
-- The backend auth API exists, but the onboarding UI is not yet integrated with it
+- `POST /auth/register` is called as soon as PIN setup succeeds
+- The returned session is kept only in memory as `pendingSession` until the first-product screen completes or is skipped
+- If onboarding is interrupted after account creation, the backend account exists but the local authenticated session is not yet stored
 
-## Partial Client Sync Implementation
-
-File:
-
-- `Venda/Services/SyncEngine.swift`
-
-Issue:
-
-- Only part of the outbound payload is mapped
-- Authorization is not attached
-- Full round-trip sync behavior is not implemented yet
-
-## Mixed State Sources In The iOS App
-
-Files:
-
-- `Venda/App/AppState.swift`
-- `Venda/ViewModels/StockViewModel.swift`
-- `Venda/ViewModels/SaleViewModel.swift`
-- `Venda/ViewModels/MoneyViewModel.swift`
-- `Venda/Models/CoreDataManager.swift`
-
-Issue:
-
-- The app currently splits behavior across environment state, in-memory view model arrays, and Core Data entities
-- This makes end-to-end persistence and sync behavior incomplete in the current implementation
-
-## No Automated Tests
+## Limited Automated Coverage
 
 Files:
 
 - `Backend/package.json`
+- `Backend/scripts/live-smoke.js`
 - `VendaTests/`
 - `VendaUITests/`
 
 Issue:
 
-- The backend `test` script is a placeholder
-- Test targets exist on the iOS side, but the repository does not currently show an active automated test workflow
+- The backend now has a small unit-level regression suite for auth, staff, and sync flows
+- The backend also now has a live Postgres smoke path for startup, health, merchant registration, merchant login, and `GET /auth/me`
+- Backend automation still does not cover broader multi-endpoint workflows such as sync round-trips, staff management lifecycle changes, or failure-mode retries against a live database
+- The repository now includes backend CI and an iOS build-verification workflow, but the iOS lane is still build-only and does not run simulator tests
 
-## Role Naming Drift
+## Historical Late Offline Uploads May Still Need A Broader Resync
 
 Files:
 
-- `Backend/src/controllers/auth.ts`
-- `Venda/App/AppState.swift`
+- `Venda/Services/SyncEngine.swift`
+- `Venda/Services/PersistenceService.swift`
+- `Backend/src/controllers/sync.ts`
 
 Issue:
 
-- The backend creates a default staff role of `owner`
-- The iOS app defines roles as `admin`, `manager`, and `cashier`
+- The iOS app now persists a real local `updatedAt` timestamp and sends that value in outbound sync payloads
+- The backend now tracks a separate `server_updated_at` cursor and `GET /sync/pull` filters on that server-side propagation timestamp
+- Rows that were inserted late before this backend change are not fully recoverable through incremental sync alone, so some existing devices may still need a broader resync to catch already-missed historical records
 
-This mismatch will need normalization before backend-driven role logic is added.
+## Legacy `owner` Role Still Exists In iOS Types
+
+Files:
+
+- `Venda/App/AppState.swift`
+- `Backend/src/middleware/auth.ts`
+
+Issue:
+
+- The iOS `StaffRole` enum still includes `owner`
+- Backend auth normalizes `owner` to `admin` and new registrations now create admin staff directly
+- Any legacy locally stored role values should continue to be handled carefully if older sessions are still in circulation
+
+## JWT Secret Rotation Forces Reauthentication
+
+Files:
+
+- `Backend/src/config/env.ts`
+- `Backend/src/controllers/auth.ts`
+
+Issue:
+
+- The backend uses a single `JWT_SECRET` for both token signing and verification
+- There is no refresh-token or key-rollover mechanism in the current codebase
+- Any secret change, or any mismatch between deployed replicas, invalidates active sessions immediately
+
+## Backend Startup Still Performs Schema Mutation
+
+Files:
+
+- `Backend/src/index.ts`
+- `Backend/src/config/db.ts`
+
+Issue:
+
+- Every successful boot runs `initDb()` before the API begins serving traffic
+- `initDb()` executes schema bootstrap SQL with `CREATE TABLE`, `ALTER TABLE`, trigger recreation, and data backfill statements
+- Operators still need rollout discipline, backups, and a database user with the required DDL permissions
+
+## Backend CORS Policy Is Still Wide Open
+
+Files:
+
+- `Backend/src/index.ts`
+
+Issue:
+
+- The backend currently enables `cors()` with default permissive behavior for all origins
+- There is no checked-in origin allowlist or environment-driven CORS configuration yet
+- Production deployments need proxy or network-layer restrictions until the application adds explicit origin controls

@@ -6,19 +6,38 @@ Local backend:
 
 - `http://localhost:3000/api/v1`
 
-Current hosted URL used by the app:
+Current built-in fallback used by the app:
 
 - `https://homeserver.taildbc5d3.ts.net/api/v1`
+
+iOS override order:
+
+1. `VENDA_API_BASE_URL` environment variable
+2. `VENDA_API_BASE_URL` Info.plist key
+3. `API_BASE_URL` Info.plist key
+4. `venda.api.base.url` in `UserDefaults`
+5. Built-in fallback URL
+
+Provide a full absolute URL that already includes `/api/v1`. No App Transport Security exception is checked in for plain local `http://` endpoints.
 
 ## Auth Endpoints
 
 ### `POST /auth/register`
+
+Accepted request fields:
+
+- `business_name`
+- `owner_name`
+- `business_type`
+- `phone`
+- `pin`
 
 Request body:
 
 ```json
 {
   "business_name": "Shop Name",
+  "owner_name": "Jane Banda",
   "business_type": "Retail",
   "phone": "260...",
   "pin": "1234"
@@ -92,6 +111,8 @@ Success response:
 ```
 
 ### `POST /auth/join`
+
+Alias: `POST /auth/staff/login`
 
 Request body:
 

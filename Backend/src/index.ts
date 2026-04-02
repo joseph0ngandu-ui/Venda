@@ -1,15 +1,43 @@
 import express from 'express';
 import cors from 'cors';
-import dotenv from 'dotenv';
+import { getPort, isCorsOriginAllowed, validateRuntimeConfig } from './config/env';
 import apiRoutes from './routes/api';
 import { initDb } from './config/db';
 
-dotenv.config();
+validateRuntimeConfig();
 
 const app = express();
-const PORT = process.env.PORT || 3000;
+const PORT = getPort();
 
-app.use(cors());
+const isSameOriginRequest = (origin: string, requestHost: string | undefined, requestProtocols: string[]) => {
+  if (!requestHost) {
+    return false;
+  }
+
+  return requestProtocols.some(protocol => `${protocol}://${requestHost}` === origin);
+};
+
+app.use((req, res, next) => {
+  const origin = req.header('Origin');
+  const requestHost = req.header('X-Forwarded-Host')?.split(',')[0]?.trim() || req.header('Host');
+  const forwardedProto = req.header('X-Forwarded-Proto')?.split(',')[0]?.trim();
+  const requestProtocols = [forwardedProto, req.protocol].filter((value): value is string => Boolean(value));
+
+  if (!origin || isSameOriginRequest(origin, requestHost, requestProtocols) || isCorsOriginAllowed(origin)) {
+    next();
+    return;
+  }
+
+  res.status(403).json({ error: 'Origin not allowed by CORS policy' });
+});
+
+app.use(
+  cors({
+    origin(origin, callback) {
+      callback(null, isCorsOriginAllowed(origin));
+    },
+  })
+);
 app.use(express.json({ limit: '10mb' })); // Support for large offline batches
 
 app.use('/api/v1', apiRoutes);

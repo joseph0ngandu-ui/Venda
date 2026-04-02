@@ -124,7 +124,7 @@ class SyncEngine: ObservableObject {
                             "is_service": product.isService,
                             "is_active": product.isActive,
                             "created_at": isoString(from: product.createdAt),
-                            "updated_at": isoString(from: product.syncedAt ?? product.createdAt ?? Date())
+                            "updated_at": isoString(from: outboundUpdatedAt(for: product))
                         ]
                     }
                 }
@@ -141,7 +141,7 @@ class SyncEngine: ObservableObject {
                             "status": sale.status ?? "completed",
                             "notes": sale.notes as Any,
                             "created_at": isoString(from: sale.createdAt),
-                            "updated_at": isoString(from: sale.syncedAt ?? sale.createdAt ?? Date())
+                            "updated_at": isoString(from: outboundUpdatedAt(for: sale))
                         ]
                     }
                 }
@@ -160,7 +160,7 @@ class SyncEngine: ObservableObject {
                             "discount_reason": item.discountReason as Any,
                             "price_override_by": item.priceOverrideBy as Any,
                             "created_at": isoString(from: item.createdAt),
-                            "updated_at": isoString(from: item.syncedAt ?? item.createdAt ?? Date())
+                            "updated_at": isoString(from: outboundUpdatedAt(for: item))
                         ]
                     }
                 }
@@ -176,7 +176,7 @@ class SyncEngine: ObservableObject {
                             "status": momo.status ?? "unmatched",
                             "received_at": isoString(from: momo.receivedAt),
                             "created_at": isoString(from: momo.createdAt),
-                            "updated_at": isoString(from: momo.syncedAt ?? momo.createdAt ?? Date())
+                            "updated_at": isoString(from: outboundUpdatedAt(for: momo))
                         ]
                     }
                 }
@@ -193,7 +193,7 @@ class SyncEngine: ObservableObject {
                             "due_date": isoString(from: credit.dueDate),
                             "status": credit.status ?? "outstanding",
                             "created_at": isoString(from: credit.createdAt),
-                            "updated_at": isoString(from: credit.syncedAt ?? credit.createdAt ?? Date())
+                            "updated_at": isoString(from: outboundUpdatedAt(for: credit))
                         ]
                     }
                 }
@@ -326,6 +326,12 @@ class SyncEngine: ObservableObject {
         guard let date else { return "" }
         return formatter.string(from: date)
     }
+
+    private func outboundUpdatedAt(for object: NSManagedObject) -> Date {
+        (object.value(forKey: "updatedAt") as? Date) ??
+            (object.value(forKey: "createdAt") as? Date) ??
+            Date()
+    }
 }
 
 struct PullSyncEnvelope: Decodable {
@@ -356,6 +362,7 @@ struct SyncedProduct: Decodable {
     let isService: Bool?
     let isActive: Bool?
     let createdAt: String?
+    let updatedAt: String?
 }
 
 struct SyncedSale: Decodable {
@@ -368,6 +375,7 @@ struct SyncedSale: Decodable {
     let status: String?
     let notes: String?
     let createdAt: String?
+    let updatedAt: String?
 }
 
 struct SyncedSaleLineItem: Decodable {
@@ -382,6 +390,7 @@ struct SyncedSaleLineItem: Decodable {
     let discountReason: String?
     let priceOverrideBy: String?
     let createdAt: String?
+    let updatedAt: String?
 }
 
 struct SyncedStaff: Decodable {
@@ -390,6 +399,7 @@ struct SyncedStaff: Decodable {
     let role: String
     let isActive: Bool
     let createdAt: String?
+    let updatedAt: String?
 }
 
 struct SyncedMoMoTransaction: Decodable {
@@ -401,6 +411,7 @@ struct SyncedMoMoTransaction: Decodable {
     let status: String?
     let receivedAt: String?
     let createdAt: String?
+    let updatedAt: String?
 }
 
 struct SyncedCreditEntry: Decodable {
@@ -413,4 +424,5 @@ struct SyncedCreditEntry: Decodable {
     let dueDate: String?
     let status: String?
     let createdAt: String?
+    let updatedAt: String?
 }

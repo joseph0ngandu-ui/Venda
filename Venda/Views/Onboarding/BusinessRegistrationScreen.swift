@@ -17,8 +17,15 @@ struct BusinessRegistrationScreen: View {
         ("Other", "briefcase.fill")
     ]
 
+    private var phoneDigits: String {
+        phone.filter(\.isNumber)
+    }
+
     var isValid: Bool {
-        !businessName.isEmpty && !ownerName.isEmpty && phone.count >= 9 && !selectedType.isEmpty
+        !businessName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty &&
+        !ownerName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty &&
+        phoneDigits.count >= 9 &&
+        !selectedType.isEmpty
     }
 
     var body: some View {
@@ -127,7 +134,12 @@ struct BusinessRegistrationScreen: View {
                 VendaButton(
                     title: "Continue",
                     action: {
-                        onNext(businessName, ownerName, "+260\(phone)", selectedType)
+                        onNext(
+                            businessName.trimmingCharacters(in: .whitespacesAndNewlines),
+                            ownerName.trimmingCharacters(in: .whitespacesAndNewlines),
+                            phoneDigits,
+                            selectedType
+                        )
                     },
                     isEnabled: isValid
                 )

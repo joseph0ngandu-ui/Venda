@@ -1,3 +1,4 @@
+import './env';
 import { Pool } from 'pg';
 
 export const dbInitString = `
@@ -9,7 +10,8 @@ CREATE TABLE IF NOT EXISTS merchants (
     pin_hash VARCHAR(255) NOT NULL,
     currency VARCHAR(10) DEFAULT 'ZMW',
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    server_updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
 
 CREATE TABLE IF NOT EXISTS staff (
@@ -20,7 +22,8 @@ CREATE TABLE IF NOT EXISTS staff (
     pin_hash VARCHAR(255) NOT NULL,
     is_active BOOLEAN DEFAULT TRUE,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    server_updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
 
 ALTER TABLE staff
@@ -64,7 +67,8 @@ CREATE TABLE IF NOT EXISTS products (
     is_service BOOLEAN DEFAULT FALSE,
     is_active BOOLEAN DEFAULT TRUE,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    server_updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
 
 CREATE TABLE IF NOT EXISTS sales (
@@ -79,6 +83,7 @@ CREATE TABLE IF NOT EXISTS sales (
     notes TEXT,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    server_updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
     UNIQUE(merchant_id, reference)
 );
 
@@ -94,7 +99,8 @@ CREATE TABLE IF NOT EXISTS sale_line_items (
     discount_reason VARCHAR(255),
     price_override_by VARCHAR(255),
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    server_updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
 
 CREATE TABLE IF NOT EXISTS momo_transactions (
@@ -108,6 +114,7 @@ CREATE TABLE IF NOT EXISTS momo_transactions (
     received_at TIMESTAMP WITH TIME ZONE NOT NULL,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    server_updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
     UNIQUE(merchant_id, transaction_ref)
 );
 
@@ -122,14 +129,29 @@ CREATE TABLE IF NOT EXISTS credit_entries (
     due_date TIMESTAMP WITH TIME ZONE,
     status VARCHAR(50) DEFAULT 'outstanding',
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    server_updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
+
+DO $$
+DECLARE
+    t text;
+BEGIN
+    FOREACH t IN ARRAY ARRAY['merchants', 'staff', 'products', 'sales', 'sale_line_items', 'momo_transactions', 'credit_entries']
+    LOOP
+        EXECUTE format('ALTER TABLE %I ADD COLUMN IF NOT EXISTS server_updated_at TIMESTAMP WITH TIME ZONE', t);
+        EXECUTE format('UPDATE %I SET server_updated_at = COALESCE(server_updated_at, updated_at, created_at, CURRENT_TIMESTAMP) WHERE server_updated_at IS NULL', t);
+        EXECUTE format('ALTER TABLE %I ALTER COLUMN server_updated_at SET DEFAULT CURRENT_TIMESTAMP', t);
+    END LOOP;
+END;
+$$;
 
 -- Trigger function to update updated_at timestamp
 CREATE OR REPLACE FUNCTION update_updated_at_column()
 RETURNS TRIGGER AS $$
 BEGIN
     NEW.updated_at = CURRENT_TIMESTAMP;
+    NEW.server_updated_at = CURRENT_TIMESTAMP;
     RETURN NEW;
 END;
 $$ language 'plpgsql';

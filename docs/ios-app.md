@@ -18,6 +18,7 @@ File: `Venda/App/AppShellView.swift`
 Behavior:
 
 - Shows `SplashScreen` on launch
+- Shows a bootstrapping progress state while `AppState` restores or refreshes a session
 - Routes to `OnboardingFlow` when `appState.isAuthenticated == false`
 - Routes to `VendaTabBar` when `appState.isAuthenticated == true`
 
@@ -29,15 +30,25 @@ State tracked globally:
 
 - `isAuthenticated`
 - `currentUser`
-- `hasCompletedOnboarding`
+- `isBootstrapping`
+- `authErrorMessage`
 
 Defined staff roles:
 
+- `owner`
 - `admin`
 - `manager`
 - `cashier`
 
-Current state persistence is not implemented. Comments indicate this should eventually move to Keychain or `UserDefaults`.
+Auth behavior:
+
+- `registerBusiness(...)` calls the backend register endpoint
+- `loginMerchant(...)` calls the backend merchant login endpoint
+- `joinBusiness(...)` calls the backend staff join endpoint
+- `applyAuthenticatedSession(...)` persists the session, updates identity, ensures local Core Data merchant/staff records, and triggers sync
+- `refreshSession()` and bootstrap both call `GET /auth/me` to refresh identity when a saved token exists
+
+Session persistence now exists. `SessionStore` stores `AuthenticatedSession` in Keychain and migrates any legacy `UserDefaults` copy on first load.
 
 ## Onboarding And Auth UI
 
@@ -54,11 +65,14 @@ Routes:
 Current behavior:
 
 - Registration flow collects business details, then PIN, then first product
-- Join-business flow logs in a mocked cashier user
-- Login flow logs in a mocked staff user
-- Completing onboarding logs in a mocked owner user
+- PIN completion calls `AppState.registerBusiness(...)`, which creates the backend account immediately
+- Merchant login calls `AppState.loginMerchant(...)`
+- Join-business calls `AppState.joinBusiness(...)`
+- Successful registration stores the returned backend session in `pendingSession`
+- The session is only applied to app state when the first-product step completes or is skipped
+- The first-product step creates a local product through `StockViewModel` and then triggers sync
 
-The current onboarding flow is UI-complete enough to navigate, but it is not wired to the backend auth API yet.
+The auth screens are now wired to the backend API, but the first-product step is still local-first rather than part of the backend registration transaction.
 
 ## Main App Areas
 
@@ -129,8 +143,9 @@ File: `Venda/ViewModels/SaleViewModel.swift`
 
 File: `Venda/ViewModels/StockViewModel.swift`
 
-- Owns the in-memory product list
-- Supports add, update, and delete operations
+- Reads products from `PersistenceService`
+- Supports add, update, and delete operations through Core Data-backed persistence
+- Reloads on Core Data save notifications
 
 ### `MoneyViewModel`
 
@@ -138,17 +153,21 @@ File: `Venda/ViewModels/MoneyViewModel.swift`
 
 - Stores MoMo summary totals and transaction summaries
 - Stores credit entry summaries
-- `refreshData()` is currently a placeholder
+- Hydrates state from `PersistenceService.fetchMoneyState()`
+- Reloads on Core Data save notifications
 
 ### `DashboardViewModel`
 
 File: `Venda/ViewModels/DashboardViewModel.swift`
 
-- Aggregates revenue, sales count, recent sales, and payment breakdown
+- Aggregates revenue, sales count, recent sales, and payment breakdown from persisted sales data
 
 ## Local Persistence
 
-File: `Venda/Models/CoreDataManager.swift`
+Files:
+
+- `Venda/Models/CoreDataManager.swift`
+- `Venda/Services/PersistenceService.swift`
 
 Behavior:
 
@@ -156,6 +175,10 @@ Behavior:
 - Enables automatic migration
 - Enables persistent history tracking
 - Exposes the main view context and a background context
+- Ensures the current merchant and staff exist in Core Data from the authenticated session
+- Persists products, sales, MoMo transactions, and credit entries locally
+- Applies sync pull payloads back into Core Data
+- Uses `updatedAt` to track true local mutation time while `syncedAt` remains client sync bookkeeping
 
 The app is positioned as offline-first, with Core Data intended to hold the local source of truth.
 
@@ -165,11 +188,21 @@ File: `Venda/Services/NetworkService.swift`
 
 Behavior:
 
-- Exposes `register(...)` and `login(...)`
-- Calls a hard-coded Tailscale Funnel backend URL
+- Exposes `register(...)`, `loginMerchant(...)`, `joinBusiness(...)`, `getMe(...)`, `fetchStaff(...)`, `createStaff(...)`, `updateStaff(...)`, and `fetchReportsSummary(...)`
 - Parses token responses from the backend
+- Resolves the API base URL in this order:
+  - `VENDA_API_BASE_URL` process environment variable
+  - `VENDA_API_BASE_URL` Info.plist key
+  - `API_BASE_URL` Info.plist key
+  - `venda.api.base.url` in `UserDefaults`
+  - Built-in fallback hosted URL
 
-The base URL is not environment-driven yet.
+Override guidance from source:
+
+- Provide a full absolute base URL that already includes `/api/v1`
+- The override must be present before app launch because `NetworkService.shared` resolves it during startup
+- Invalid URL configuration triggers `fatalError`
+- No App Transport Security exception is checked in for plain local `http://` endpoints
 
 ## Sync
 
@@ -179,15 +212,18 @@ Behavior:
 
 - Monitors network reachability via `NWPathMonitor`
 - Triggers sync automatically when connectivity becomes available
+- Pulls remote changes first, then pushes local unsynced changes
 - Reads unsynced Core Data records
-- Builds a partial batch payload
-- Sends sync push requests to a hard-coded backend URL
+- Builds batch payloads for products, sales, sale line items, MoMo transactions, and credit entries
+- Sends persisted local `updatedAt` values so outbound `updated_at` reflects the true local edit time for post-migration rows
+- Sends sync requests through the same resolved API base URL as `NetworkService`
+- Attaches `Authorization: Bearer <token>` to push and pull requests
 
 Current limitations:
 
-- Only product payload mapping is implemented
-- Auth header injection is still commented out
 - Local entities are marked synced only on HTTP 200
+- Protocol-level late offline uploads can still be missed by other devices because the backend filters pulls by the client-supplied `updated_at` timestamp
+- Sync is triggered by connectivity changes and auth/session events, but there is no separate retry queue or background scheduler documented in the repo
 
 ## Domain Models
 

@@ -1,0 +1,38 @@
+name: iOS Verify
+
+on:
+  push:
+    paths:
+      - "Venda/**"
+      - "Venda.xcodeproj/**"
+      - "VendaTests/**"
+      - "VendaUITests/**"
+      - ".github/workflows/ios-verify.yml"
+  pull_request:
+    paths:
+      - "Venda/**"
+      - "Venda.xcodeproj/**"
+      - "VendaTests/**"
+      - "VendaUITests/**"
+      - ".github/workflows/ios-verify.yml"
+  workflow_dispatch:
+
+jobs:
+  build:
+    name: Build App Target
+    runs-on: macos-26
+    timeout-minutes: 30
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Build Venda for iOS Simulator
+        run: |
+          xcodebuild \
+            -project Venda.xcodeproj \
+            -target Venda \
+            -configuration Debug \
+            -sdk iphonesimulator \
+            -derivedDataPath build/DerivedData \
+            CODE_SIGNING_ALLOWED=NO \
+            build

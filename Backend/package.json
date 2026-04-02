@@ -4,7 +4,9 @@
   "description": "",
   "main": "index.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1",
+    "test": "TS_NODE_PROJECT=tsconfig.test.json node --require ts-node/register --test test/**/*.test.ts",
+    "smoke:live": "node scripts/live-smoke.js",
+    "smoke:live:local": "bash scripts/live-smoke-local.sh",
     "start": "node dist/index.js",
     "dev": "nodemon src/index.ts",
     "build": "tsc"

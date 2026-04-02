@@ -1,6 +1,7 @@
 import { Request, Response, NextFunction } from 'express';
 import jwt, { JwtPayload } from 'jsonwebtoken';
 import pool from '../config/db';
+import { getJwtSecret } from '../config/env';
 
 export type StaffRole = 'admin' | 'manager' | 'cashier';
 
@@ -82,7 +83,7 @@ export const authenticateJWT = async (req: AuthRequest, res: Response, next: Nex
   }
 
   try {
-    const decoded = jwt.verify(token, process.env.JWT_SECRET || 'venda_secret_key') as AuthTokenPayload;
+    const decoded = jwt.verify(token, getJwtSecret()) as AuthTokenPayload;
     const merchantId = decoded.merchantId ?? decoded.id;
 
     if (!merchantId) {
@@ -91,13 +92,14 @@ export const authenticateJWT = async (req: AuthRequest, res: Response, next: Nex
     }
 
     const companyCode = decoded.companyCode ?? buildCompanyCode(merchantId);
+    const authType = decoded.authType ?? 'merchant';
 
     req.merchant = {
       id: merchantId,
       phone: decoded.phone,
       companyCode,
     };
-    req.authType = decoded.authType ?? 'merchant';
+    req.authType = authType;
 
     if (decoded.staffId) {
       const result = await pool.query(
@@ -114,18 +116,34 @@ export const authenticateJWT = async (req: AuthRequest, res: Response, next: Nex
         | { id: string; merchant_id: string; name: string; role: string; is_active: boolean | null }
         | undefined;
 
-      if (!liveStaff || liveStaff.is_active === false) {
+      if (!liveStaff) {
+        if (authType !== 'merchant') {
+          res.status(403).json({ error: 'Staff account is inactive' });
+          return;
+        }
+
+        req.staff = {
+          id: decoded.staffId,
+          merchantId,
+          name:
+            typeof decoded.staffName === 'string' && decoded.staffName.trim()
+              ? decoded.staffName.trim()
+              : 'Owner',
+          role: normalizeStaffRole(decoded.role),
+          companyCode,
+        };
+      } else if (liveStaff.is_active === false) {
         res.status(403).json({ error: 'Staff account is inactive' });
         return;
+      } else {
+        req.staff = {
+          id: liveStaff.id,
+          merchantId,
+          name: liveStaff.name,
+          role: normalizeStaffRole(liveStaff.role),
+          companyCode,
+        };
       }
-
-      req.staff = {
-        id: liveStaff.id,
-        merchantId,
-        name: liveStaff.name,
-        role: normalizeStaffRole(liveStaff.role),
-        companyCode,
-      };
     }
 
     next();

@@ -59,6 +59,36 @@ const normalizeText = (value: unknown) => {
   return value.trim();
 };
 
+const getRequestBody = (req: Request): Record<string, unknown> => {
+  if (!req.body || typeof req.body !== 'object' || Array.isArray(req.body)) {
+    return {};
+  }
+
+  return req.body as Record<string, unknown>;
+};
+
+const parseOptionalBoolean = (value: unknown) => {
+  if (value === undefined) {
+    return { provided: false, isValid: true, value: undefined as boolean | undefined };
+  }
+
+  if (typeof value === 'boolean') {
+    return { provided: true, isValid: true, value };
+  }
+
+  const normalizedValue = normalizeText(value).toLowerCase();
+
+  if (normalizedValue === 'true') {
+    return { provided: true, isValid: true, value: true };
+  }
+
+  if (normalizedValue === 'false') {
+    return { provided: true, isValid: true, value: false };
+  }
+
+  return { provided: true, isValid: false, value: undefined as boolean | undefined };
+};
+
 const parseRole = (value: unknown) => {
   const normalizedValue = normalizeText(value).toLowerCase();
 
@@ -299,9 +329,10 @@ export const createStaff = async (req: Request, res: Response) => {
     return;
   }
 
-  const name = normalizeText(req.body.name);
-  const role = parseRole(req.body.role);
-  const pin = normalizeText(req.body.pin);
+  const body = getRequestBody(req);
+  const name = normalizeText(body.name);
+  const role = parseRole(body.role);
+  const pin = normalizeText(body.pin);
 
   if (!name || !role || !pin) {
     return res.status(400).json({ error: 'Missing required fields' });
@@ -365,25 +396,30 @@ export const updateStaff = async (req: Request, res: Response) => {
     return;
   }
 
+  const body = getRequestBody(req);
   const targetStaffId = getRouteStaffId(req);
-  const name = normalizeText(req.body.name);
-  const roleInput = req.body.role;
+  const name = normalizeText(body.name);
+  const roleInput = body.role;
   const nextRole = roleInput === undefined ? undefined : parseRole(roleInput);
-  const nextActive =
-    req.body.is_active === undefined
-      ? undefined
-      : req.body.is_active === true || req.body.is_active === 'true';
+  const parsedIsActive = parseOptionalBoolean(body.is_active);
+  const nextActive = parsedIsActive.value;
 
   if (!targetStaffId) {
     return res.status(400).json({ error: 'Missing staff id' });
   }
 
-  if (!name && roleInput === undefined && req.body.is_active === undefined) {
+  if (!name && roleInput === undefined && !parsedIsActive.provided) {
     return res.status(400).json({ error: 'No staff updates were provided' });
   }
 
   if (roleInput !== undefined && !nextRole) {
     return res.status(400).json({ error: 'Invalid staff role' });
+  }
+
+  if (!parsedIsActive.isValid) {
+    return res
+      .status(400)
+      .json({ error: 'Invalid is_active value. Use true or false.' });
   }
 
   try {
@@ -555,9 +591,10 @@ export const rotateStaffPin = async (req: Request, res: Response) => {
     return;
   }
 
+  const body = getRequestBody(req);
   const targetStaffId = getRouteStaffId(req);
-  const newPin = normalizeText(req.body.pin ?? req.body.new_pin);
-  const currentPin = normalizeText(req.body.current_pin);
+  const newPin = normalizeText(body.pin ?? body.new_pin);
+  const currentPin = normalizeText(body.current_pin);
 
   if (!targetStaffId) {
     return res.status(400).json({ error: 'Missing staff id' });

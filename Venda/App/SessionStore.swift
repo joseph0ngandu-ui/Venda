@@ -11,10 +11,12 @@ final class SessionStore {
 
     private init() {}
 
-    func save(_ session: AuthenticatedSession) {
-        guard let data = try? encoder.encode(session) else { return }
-        guard keychain.set(data, for: storageKey) else { return }
+    @discardableResult
+    func save(_ session: AuthenticatedSession) -> Bool {
+        guard let data = try? encoder.encode(session) else { return false }
+        guard keychain.set(data, for: storageKey) else { return false }
         defaults.removeObject(forKey: storageKey)
+        return true
     }
 
     func load() -> AuthenticatedSession? {

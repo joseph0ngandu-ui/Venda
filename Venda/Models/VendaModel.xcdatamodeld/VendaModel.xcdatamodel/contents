@@ -9,6 +9,7 @@
         <attribute name="dueDate" optional="YES" attributeType="Date" usesScalarValueType="NO"/>
         <attribute name="id" optional="YES" attributeType="UUID" usesScalarValueType="NO"/>
         <attribute name="status" optional="YES" attributeType="String" defaultValueString="outstanding"/>
+        <attribute name="updatedAt" optional="YES" attributeType="Date" usesScalarValueType="NO"/>
         <attribute name="syncedAt" optional="YES" attributeType="Date" usesScalarValueType="NO"/>
         <relationship name="merchant" optional="YES" maxCount="1" deletionRule="Nullify" destinationEntity="Merchant" inverseName="creditEntries" inverseEntity="Merchant"/>
         <relationship name="sale" optional="YES" maxCount="1" deletionRule="Nullify" destinationEntity="Sale" inverseName="creditEntry" inverseEntity="Sale"/>
@@ -35,6 +36,7 @@
         <attribute name="receivedAt" optional="YES" attributeType="Date" usesScalarValueType="NO"/>
         <attribute name="senderPhone" optional="YES" attributeType="String"/>
         <attribute name="status" optional="YES" attributeType="String" defaultValueString="unmatched"/>
+        <attribute name="updatedAt" optional="YES" attributeType="Date" usesScalarValueType="NO"/>
         <attribute name="syncedAt" optional="YES" attributeType="Date" usesScalarValueType="NO"/>
         <attribute name="transactionRef" optional="YES" attributeType="String"/>
         <relationship name="merchant" optional="YES" maxCount="1" deletionRule="Nullify" destinationEntity="Merchant" inverseName="momoTransactions" inverseEntity="Merchant"/>
@@ -53,6 +55,7 @@
         <attribute name="pricingType" optional="YES" attributeType="String"/>
         <attribute name="stockQuantity" optional="YES" attributeType="Integer 32" defaultValueString="0" usesScalarValueType="YES"/>
         <attribute name="suggestedPrice" optional="YES" attributeType="Decimal"/>
+        <attribute name="updatedAt" optional="YES" attributeType="Date" usesScalarValueType="NO"/>
         <attribute name="syncedAt" optional="YES" attributeType="Date" usesScalarValueType="NO"/>
         <attribute name="trackStock" optional="YES" attributeType="Boolean" defaultValueString="YES" usesScalarValueType="YES"/>
         <relationship name="merchant" optional="YES" maxCount="1" deletionRule="Nullify" destinationEntity="Merchant" inverseName="products" inverseEntity="Merchant"/>
@@ -66,6 +69,7 @@
         <attribute name="paymentMethod" optional="YES" attributeType="String"/>
         <attribute name="reference" optional="YES" attributeType="String"/>
         <attribute name="status" optional="YES" attributeType="String" defaultValueString="completed"/>
+        <attribute name="updatedAt" optional="YES" attributeType="Date" usesScalarValueType="NO"/>
         <attribute name="syncedAt" optional="YES" attributeType="Date" usesScalarValueType="NO"/>
         <attribute name="totalAmount" optional="YES" attributeType="Decimal" defaultValueString="0.0"/>
         <relationship name="creditEntry" optional="YES" maxCount="1" deletionRule="Cascade" destinationEntity="CreditEntry" inverseName="sale" inverseEntity="CreditEntry"/>
@@ -83,6 +87,7 @@
         <attribute name="originalPrice" optional="YES" attributeType="Decimal"/>
         <attribute name="priceOverrideBy" optional="YES" attributeType="String"/>
         <attribute name="quantity" optional="YES" attributeType="Decimal" defaultValueString="1.0"/>
+        <attribute name="updatedAt" optional="YES" attributeType="Date" usesScalarValueType="NO"/>
         <attribute name="syncedAt" optional="YES" attributeType="Date" usesScalarValueType="NO"/>
         <attribute name="unitPrice" optional="YES" attributeType="Decimal" defaultValueString="0.0"/>
         <relationship name="product" optional="YES" maxCount="1" deletionRule="Nullify" destinationEntity="Product" inverseName="saleLineItems" inverseEntity="Product"/>
@@ -94,6 +99,7 @@
         <attribute name="isActive" optional="YES" attributeType="Boolean" defaultValueString="YES" usesScalarValueType="YES"/>
         <attribute name="name" optional="YES" attributeType="String"/>
         <attribute name="role" optional="YES" attributeType="String"/>
+        <attribute name="updatedAt" optional="YES" attributeType="Date" usesScalarValueType="NO"/>
         <attribute name="syncedAt" optional="YES" attributeType="Date" usesScalarValueType="NO"/>
         <relationship name="merchant" optional="YES" maxCount="1" deletionRule="Nullify" destinationEntity="Merchant" inverseName="staffMembers" inverseEntity="Merchant"/>
         <relationship name="sales" optional="YES" toMany="YES" deletionRule="Nullify" destinationEntity="Sale" inverseName="staff" inverseEntity="Sale"/>

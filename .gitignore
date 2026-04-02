@@ -30,3 +30,43 @@ build/
 # Docker
 .docker/
 docker-compose.override.yml
+
+# IDEs
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+Thumbs.db
+
+# Swift and Xcode
+.swiftpm/
+.xcodeproj/xcuserdata/
+*.playground
+*.xcworkspace/xcuserdata/
+*.resolved
+
+# Test coverage
+coverage/
+*.lcov
+.nyc_output/
+
+# Environment files
+.env
+.env.local
+.env.*.local
+
+# OS and temporary files
+*.log
+*.tmp
+.cache/
+
+# Backend build artifacts
+dist/
+build/
+.build/
+
+# Swift build
+.swiftpm/
+build-log.txt

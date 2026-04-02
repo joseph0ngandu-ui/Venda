@@ -32,6 +32,7 @@ Common attributes across entities:
 
 - `id`
 - `createdAt`
+- `updatedAt`
 - `syncedAt`
 
 Important entity-specific fields:
@@ -75,7 +76,7 @@ Key uniqueness rules:
 
 ## Mapping Notes
 
-- The Core Data model includes `syncedAt` for client-side sync bookkeeping.
+- The Core Data model includes `updatedAt` for local mutation tracking and `syncedAt` for client-side sync bookkeeping.
 - The backend schema uses `updated_at` to support pull-based incremental sync.
 - Entity naming is conceptually aligned between app and backend, but not every UI flow writes into Core Data or sync payloads yet.
 - Staff roles are not fully normalized across layers: backend bootstrap creates `owner`, while iOS currently defines `admin`, `manager`, and `cashier`.

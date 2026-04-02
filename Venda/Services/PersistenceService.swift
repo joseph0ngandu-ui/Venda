@@ -42,10 +42,10 @@ final class PersistenceService {
     func saveProduct(_ productModel: ProductModel) {
         let context = coreData.context
         let product = fetchOrCreateProduct(id: productModel.id, in: context)
+        let now = Date()
         apply(productModel, to: product)
         product.merchant = ensureCurrentMerchant(in: context)
-        product.syncedAt = nil
-        product.createdAt = product.createdAt ?? Date()
+        markLocallyModified(product, at: now)
         save(context)
     }
 
@@ -55,7 +55,7 @@ final class PersistenceService {
             let hasSalesHistory = ((product.saleLineItems as? Set<SaleLineItem>)?.isEmpty == false)
             if product.syncedAt != nil || hasSalesHistory {
                 product.isActive = false
-                product.syncedAt = nil
+                markLocallyModified(product)
             } else {
                 context.delete(product)
             }
@@ -97,23 +97,21 @@ final class PersistenceService {
         sale.reference = reference
         sale.paymentMethod = paymentMethod
         sale.status = "completed"
-        sale.createdAt = now
-        sale.syncedAt = nil
         sale.totalAmount = ns(cartItems.reduce(0) { $0 + ($1.finalPrice * $1.quantity) })
         sale.merchant = merchant
         sale.staff = staff
+        markLocallyCreated(sale, at: now)
 
         for cartItem in cartItems {
             let lineItem = SaleLineItem(context: context)
             lineItem.id = UUID()
-            lineItem.createdAt = now
             lineItem.quantity = ns(cartItem.quantity)
             lineItem.unitPrice = ns(cartItem.finalPrice)
             lineItem.finalPrice = ns(cartItem.finalPrice)
             lineItem.originalPrice = ns(cartItem.product.suggestedPrice ?? cartItem.finalPrice)
             lineItem.discountAmount = ns(max(0, (cartItem.product.suggestedPrice ?? cartItem.finalPrice) - cartItem.finalPrice))
             lineItem.sale = sale
-            lineItem.syncedAt = nil
+            markLocallyCreated(lineItem, at: now)
 
             if let product = findProduct(id: cartItem.product.id, in: context) {
                 lineItem.product = product
@@ -121,7 +119,7 @@ final class PersistenceService {
                 if product.trackStock && !product.isService {
                     let nextQuantity = max(0, Int(product.stockQuantity) - NSDecimalNumber(decimal: cartItem.quantity).intValue)
                     product.stockQuantity = Int32(nextQuantity)
-                    product.syncedAt = nil
+                    markLocallyModified(product, at: now)
                 }
             }
         }
@@ -203,9 +201,8 @@ final class PersistenceService {
         transaction.amount = ns(amount)
         transaction.status = "pending"
         transaction.receivedAt = receivedAt
-        transaction.createdAt = Date()
-        transaction.syncedAt = nil
         transaction.merchant = merchant
+        markLocallyCreated(transaction)
         save(context)
     }
 
@@ -230,7 +227,7 @@ final class PersistenceService {
             transaction.status = "pending"
         }
 
-        transaction.syncedAt = nil
+        markLocallyModified(transaction)
         save(context)
     }
 
@@ -252,7 +249,7 @@ final class PersistenceService {
             transaction.sale = nil
         }
 
-        transaction.syncedAt = nil
+        markLocallyModified(transaction)
         save(context)
     }
 
@@ -267,9 +264,8 @@ final class PersistenceService {
         entry.amountRepaid = ns(0)
         entry.status = "outstanding"
         entry.dueDate = dueDate
-        entry.createdAt = Date()
-        entry.syncedAt = nil
         entry.merchant = merchant
+        markLocallyCreated(entry)
         save(context)
     }
 
@@ -292,7 +288,7 @@ final class PersistenceService {
         let repaid = min(total, decimal(entry.amountRepaid) + amount)
         entry.amountRepaid = ns(repaid)
         entry.status = repaid >= total ? "paid" : (repaid > 0 ? "partial" : "outstanding")
-        entry.syncedAt = nil
+        markLocallyModified(entry)
         save(context)
     }
 
@@ -354,9 +350,8 @@ final class PersistenceService {
                 staff.name = syncedStaff.name
                 staff.role = syncedStaff.role
                 staff.isActive = syncedStaff.isActive
-                staff.createdAt = date(from: syncedStaff.createdAt)
-                staff.syncedAt = Date()
                 staff.merchant = merchant
+                applyRemoteTimestamps(createdAt: syncedStaff.createdAt, updatedAt: syncedStaff.updatedAt, to: staff)
                 scrubSensitiveFields(from: staff)
             }
 
@@ -375,9 +370,8 @@ final class PersistenceService {
                 product.trackStock = syncedProduct.trackStock ?? true
                 product.isService = syncedProduct.isService ?? false
                 product.isActive = syncedProduct.isActive ?? true
-                product.createdAt = date(from: syncedProduct.createdAt)
-                product.syncedAt = Date()
                 product.merchant = merchant
+                applyRemoteTimestamps(createdAt: syncedProduct.createdAt, updatedAt: syncedProduct.updatedAt, to: product)
             }
 
             for syncedSale in payload.sales {
@@ -390,9 +384,8 @@ final class PersistenceService {
                 sale.status = syncedSale.status
                 sale.notes = syncedSale.notes
                 sale.totalAmount = ns(syncedSale.totalAmount)
-                sale.createdAt = date(from: syncedSale.createdAt)
-                sale.syncedAt = Date()
                 sale.merchant = merchant
+                applyRemoteTimestamps(createdAt: syncedSale.createdAt, updatedAt: syncedSale.updatedAt, to: sale)
 
                 if let staffID = syncedSale.staffID {
                     sale.staff = fetchOrCreateStaff(id: staffID, in: context)
@@ -410,9 +403,8 @@ final class PersistenceService {
                 lineItem.discountAmount = ns(syncedLineItem.discountAmount ?? 0)
                 lineItem.discountReason = syncedLineItem.discountReason
                 lineItem.priceOverrideBy = syncedLineItem.priceOverrideBy
-                lineItem.createdAt = date(from: syncedLineItem.createdAt)
-                lineItem.syncedAt = Date()
                 lineItem.sale = fetchOrCreateSale(id: syncedLineItem.saleID, in: context)
+                applyRemoteTimestamps(createdAt: syncedLineItem.createdAt, updatedAt: syncedLineItem.updatedAt, to: lineItem)
 
                 if let productID = syncedLineItem.productID {
                     lineItem.product = fetchOrCreateProduct(id: productID, in: context)
@@ -428,9 +420,8 @@ final class PersistenceService {
                 momo.amount = ns(syncedMoMo.amount)
                 momo.status = syncedMoMo.status
                 momo.receivedAt = date(from: syncedMoMo.receivedAt)
-                momo.createdAt = date(from: syncedMoMo.createdAt)
-                momo.syncedAt = Date()
                 momo.merchant = merchant
+                applyRemoteTimestamps(createdAt: syncedMoMo.createdAt, updatedAt: syncedMoMo.updatedAt, to: momo)
 
                 if let saleID = syncedMoMo.saleID {
                     momo.sale = fetchOrCreateSale(id: saleID, in: context)
@@ -447,9 +438,8 @@ final class PersistenceService {
                 credit.amountRepaid = ns(syncedCredit.amountRepaid ?? 0)
                 credit.status = syncedCredit.status
                 credit.dueDate = syncedCredit.dueDate.flatMap(date(from:))
-                credit.createdAt = date(from: syncedCredit.createdAt)
-                credit.syncedAt = Date()
                 credit.merchant = merchant
+                applyRemoteTimestamps(createdAt: syncedCredit.createdAt, updatedAt: syncedCredit.updatedAt, to: credit)
 
                 if let saleID = syncedCredit.saleID {
                     credit.sale = fetchOrCreateSale(id: saleID, in: context)
@@ -609,6 +599,7 @@ final class PersistenceService {
         staff.role = currentUser.role.rawValue
         staff.isActive = true
         staff.createdAt = staff.createdAt ?? Date()
+        staff.updatedAt = staff.updatedAt ?? staff.createdAt
         staff.syncedAt = staff.syncedAt ?? Date()
         staff.merchant = ensureCurrentMerchant(in: context)
         scrubSensitiveFields(from: staff)
@@ -643,6 +634,31 @@ final class PersistenceService {
     private func date(from string: String?) -> Date? {
         guard let string else { return nil }
         return formatter.date(from: string) ?? ISO8601DateFormatter().date(from: string)
+    }
+
+    // `updatedAt` tracks the real local mutation time, while `syncedAt` stays reserved for sync bookkeeping.
+    private func markLocallyCreated(_ object: NSManagedObject, at timestamp: Date = Date()) {
+        object.setValue(timestamp, forKey: "createdAt")
+        object.setValue(timestamp, forKey: "updatedAt")
+        object.setValue(nil, forKey: "syncedAt")
+    }
+
+    private func markLocallyModified(_ object: NSManagedObject, at timestamp: Date = Date()) {
+        if object.value(forKey: "createdAt") as? Date == nil {
+            object.setValue(timestamp, forKey: "createdAt")
+        }
+
+        object.setValue(timestamp, forKey: "updatedAt")
+        object.setValue(nil, forKey: "syncedAt")
+    }
+
+    private func applyRemoteTimestamps(createdAt: String?, updatedAt: String?, to object: NSManagedObject) {
+        let remoteCreatedAt = date(from: createdAt)
+        let remoteUpdatedAt = date(from: updatedAt) ?? remoteCreatedAt
+
+        object.setValue(remoteCreatedAt, forKey: "createdAt")
+        object.setValue(remoteUpdatedAt, forKey: "updatedAt")
+        object.setValue(Date(), forKey: "syncedAt")
     }
 
     private func mapProduct(_ product: Product) -> ProductModel {

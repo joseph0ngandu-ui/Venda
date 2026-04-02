@@ -3,6 +3,7 @@ import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import { v4 as uuidv4 } from 'uuid';
 import pool from '../config/db';
+import { getJwtSecret } from '../config/env';
 import { AuthRequest, buildCompanyCode, normalizeStaffRole } from '../middleware/auth';
 
 const AUTH_TOKEN_TTL_SECONDS = 30 * 24 * 60 * 60;
@@ -84,6 +85,14 @@ const normalizeText = (value: unknown) => {
   }
 
   return value.trim();
+};
+
+const getRequestBody = (req: Request): Record<string, unknown> => {
+  if (!req.body || typeof req.body !== 'object' || Array.isArray(req.body)) {
+    return {};
+  }
+
+  return req.body as Record<string, unknown>;
 };
 
 const serializeMerchant = (merchant: MerchantRow): MerchantProfile => {
@@ -248,7 +257,7 @@ const createAuthToken = (merchant: MerchantRow, staff: StaffRow, authType: 'merc
       staffName: staff.name,
       role: normalizeStaffRole(staff.role),
     },
-    process.env.JWT_SECRET || 'venda_secret_key',
+    getJwtSecret(),
     { expiresIn: '30d' }
   );
 };
@@ -300,11 +309,12 @@ const buildAuthResponse = (
 };
 
 export const registerMerchant = async (req: Request, res: Response) => {
-  const businessName = normalizeText(req.body.business_name);
-  const businessType = normalizeText(req.body.business_type);
-  const phone = normalizeText(req.body.phone);
-  const pin = normalizeText(req.body.pin);
-  const ownerName = normalizeText(req.body.owner_name) || 'Owner';
+  const body = getRequestBody(req);
+  const businessName = normalizeText(body.business_name);
+  const businessType = normalizeText(body.business_type);
+  const phone = normalizeText(body.phone);
+  const pin = normalizeText(body.pin);
+  const ownerName = normalizeText(body.owner_name) || 'Owner';
 
   if (!businessName || !businessType || !phone || !pin) {
     return res.status(400).json({ error: 'Missing required fields' });
@@ -381,8 +391,9 @@ export const registerMerchant = async (req: Request, res: Response) => {
 };
 
 export const loginMerchant = async (req: Request, res: Response) => {
-  const phone = normalizeText(req.body.phone);
-  const pin = normalizeText(req.body.pin);
+  const body = getRequestBody(req);
+  const phone = normalizeText(body.phone);
+  const pin = normalizeText(body.pin);
 
   if (!phone || !pin) {
     return res.status(400).json({ error: 'Missing required fields' });
@@ -425,8 +436,9 @@ export const loginMerchant = async (req: Request, res: Response) => {
 };
 
 export const joinStaffByCompanyCode = async (req: Request, res: Response) => {
-  const companyCode = normalizeText(req.body.company_code ?? req.body.companyCode).toUpperCase();
-  const pin = normalizeText(req.body.pin);
+  const body = getRequestBody(req);
+  const companyCode = normalizeText(body.company_code ?? body.companyCode).toUpperCase();
+  const pin = normalizeText(body.pin);
 
   if (!companyCode || !pin) {
     return res.status(400).json({ error: 'Missing required fields' });

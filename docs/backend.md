@@ -7,15 +7,16 @@ File: `Backend/src/index.ts`
 Startup sequence:
 
 1. Load env vars with `dotenv`
-2. Create the Express app
-3. Enable `cors`
-4. Enable JSON request parsing with a `10mb` limit
-5. Mount API routes at `/api/v1`
-6. Expose `GET /health`
-7. Run database initialization
-8. Start listening on `PORT` or `3000`
+2. Validate runtime config with `validateRuntimeConfig()`
+3. Create the Express app
+4. Enable `cors`
+5. Enable JSON request parsing with a `10mb` limit
+6. Mount API routes at `/api/v1`
+7. Expose `GET /health`
+8. Run database initialization
+9. Start listening on `PORT` or `3000`
 
-The server now exits on startup failure if database initialization throws.
+The server exits on startup failure if env validation or database initialization throws.
 
 ## Scripts
 
@@ -23,20 +24,83 @@ File: `Backend/package.json`
 
 - `npm run dev`: run the server via `nodemon`
 - `npm run build`: compile TypeScript into `dist/`
+- `npm test`: run the backend regression test suite with Node's built-in test runner
+- `npm run smoke:live`: boot the compiled backend and exercise health plus a minimal auth flow against a real Postgres instance
+- `npm run smoke:live:local`: start the checked-in Docker Postgres service, build the backend, and run the live smoke path
 - `npm start`: run the compiled server
 
-There is no real test suite yet. The `test` script is still a placeholder.
+The backend now includes a small regression test suite focused on auth, staff, and sync controller behavior.
+Current checked-in coverage exercises:
+
+- malformed registration payload rejection
+- merchant JWT fallback to token claims when the live staff row no longer exists
+- staff JWT rejection when the live staff row is missing
+- staff update validation before database work starts
+- unauthenticated sync push rejection before a database transaction is opened
+- `updated_after` validation before sync pull queries run
+- pull filtering on the server-side sync cursor instead of leaking propagation timing through API response fields
+- synced staff role and timestamp normalization during push handling
+- compiled startup against a live Postgres instance
+- live `GET /health`
+- live merchant registration, merchant login, and JWT-protected `GET /auth/me`
+
+The unit tests still mock the pool layer for controller-level regressions, while the live smoke script covers startup and a minimal production-like auth path.
 
 ## Environment Variables
 
+Files:
+
+- `Backend/.env.example`
+- `Backend/src/config/env.ts`
+
 Observed runtime variables:
 
-- `PORT`: HTTP listen port
-- `DATABASE_URL`: PostgreSQL connection string used by `pg`
-- `JWT_SECRET`: signing and verification secret for auth tokens
+- `DATABASE_URL`: required PostgreSQL connection string used by `pg`
+- `JWT_SECRET`: required signing and verification secret for auth tokens
+- `PORT`: optional HTTP listen port, defaults to `3000`
 - `NODE_ENV`: used in Docker, but not read directly in the app code
 
-Docker defaults are defined in `Backend/docker-compose.yml`.
+`JWT_SECRET` validation details:
+
+- Missing or empty secrets are rejected
+- Placeholder/example secrets are rejected before the server starts
+- JWT signing and JWT verification both read through `getJwtSecret()`
+- Changing the secret invalidates any previously issued tokens immediately
+
+Rejected placeholder/example values currently include:
+
+- `change_me_for_local_dev`
+- `replace_with_a_long_random_secret`
+- `venda_secret_key`
+- `venda_production_secret_key_change_me`
+
+Docker defaults are defined in `Backend/docker-compose.yml`, and Compose now requires `JWT_SECRET` to be set at substitution time.
+
+## Live Smoke Path
+
+Files:
+
+- `Backend/scripts/live-smoke.js`
+- `Backend/scripts/live-smoke-local.sh`
+- `.github/workflows/backend-ci.yml`
+
+Behavior:
+
+- Starts the compiled backend on `SMOKE_PORT` or `3101`
+- Waits for `GET /health` to report `{ status: "ok" }`
+- Registers a uniquely named merchant against the live Postgres database
+- Logs that merchant in through the public auth endpoint
+- Calls `GET /api/v1/auth/me` with the returned bearer token
+- Deletes the temporary merchant row at the end so repeated runs do not accumulate smoke-test tenants
+
+CI now runs the same script against a Postgres 15 service container, so startup wiring, bootstrap SQL, bcrypt/JWT auth, and protected-route verification are exercised on every backend workflow run.
+
+## Deployment Notes
+
+- `Backend/.env.example` and `Backend/docker-compose.yml` are local/dev templates with checked-in local Postgres settings. Treat them as starting points, not production manifests.
+- Startup always calls `initDb()`, which runs schema/bootstrap SQL including `CREATE TABLE`, `ALTER TABLE`, and trigger creation statements. Production rollouts should assume startup can change schema state.
+- `app.use(cors())` enables permissive CORS for every origin today. If the API is reachable outside trusted clients, constrain access at the proxy or network layer until app-level origin controls exist.
+- There is no refresh-token or signing-key rollover flow. All replicas must share the same `JWT_SECRET`, and any secret rotation forces re-authentication.
 
 ## Routing
 
@@ -47,6 +111,7 @@ Routes:
 - `POST /api/v1/auth/register`
 - `POST /api/v1/auth/login`
 - `POST /api/v1/auth/join`
+- `POST /api/v1/auth/staff/login`
 - `GET /api/v1/auth/me`
 - `GET /api/v1/staff`
 - `POST /api/v1/staff`
@@ -68,6 +133,7 @@ File: `Backend/src/controllers/auth.ts`
 
 Request body:
 
+- `owner_name` (optional, defaults to `Owner`)
 - `business_name`
 - `business_type`
 - `phone`
@@ -79,7 +145,7 @@ Behavior:
 - Rejects duplicate `phone` with `409`
 - Hashes the merchant PIN using `bcryptjs`
 - Creates a merchant row
-- Creates a default admin staff row using the owner name
+- Creates a default admin staff row using `owner_name` or `Owner`
 - Sets the owner staff `last_login_at` and `pin_updated_at`
 - Signs a JWT containing merchant and active staff identity
 - Returns merchant data, staff data, permissions, and the token with `201`
@@ -107,6 +173,11 @@ Behavior:
 
 File: `Backend/src/controllers/auth.ts`
 
+Endpoints:
+
+- `POST /api/v1/auth/join`
+- `POST /api/v1/auth/staff/login`
+
 Request body:
 
 - `company_code`
@@ -129,9 +200,11 @@ Behavior:
 
 - Reads the `Authorization` header
 - Expects `Bearer <token>`
-- Verifies the token using `JWT_SECRET`
+- Verifies the token using the validated runtime secret from `getJwtSecret()`
 - Resolves the live staff record from the database on every request when a token includes `staffId`
+- Allows merchant-authenticated tokens to fall back to embedded staff claims when the live staff row is missing
 - Rejects deactivated staff even if they still hold an unexpired JWT
+- Rejects staff-authenticated tokens if the live staff row is missing or inactive
 - Attaches merchant and staff identity to the request
 - Returns `401` if no auth header is present
 - Returns `403` if verification fails
@@ -197,6 +270,7 @@ Behavior:
 - Upserts rows for each entity type
 - Uses the authenticated merchant id as the tenancy boundary
 - Treats staff sync as metadata-only unless a hashed PIN is explicitly supplied
+- Preserves client `updated_at` as the mutation timestamp while the database tracks propagation recency separately via `server_updated_at`
 - Rolls back the full transaction if any insert/update fails
 
 ### Pull
@@ -206,7 +280,7 @@ Endpoint: `GET /api/v1/sync/pull?updated_after=<ISO8601>`
 Behavior:
 
 - Requires `updated_after`
-- Returns rows updated after that timestamp
+- Returns rows whose server-side sync cursor advanced after that timestamp
 - Scopes all results to the authenticated merchant
 - Joins `sale_line_items` through `sales` to enforce merchant scoping
 - Returns explicit staff columns and does not expose `pin_hash`
@@ -240,6 +314,7 @@ Tables:
 Common schema patterns:
 
 - UUID primary keys
+- `server_updated_at` as an internal backend sync cursor on sync-participating tables
 - `created_at` and `updated_at` timestamps
 - merchant scoping through `merchant_id`
 - `updated_at` triggers generated by `update_updated_at_column()`
@@ -266,4 +341,9 @@ Services:
 - `venda-api`: builds from the local Dockerfile and exposes port `3000`
 - `venda-db`: Postgres 15 Alpine and exposes port `5432`
 
-The API waits for the database health check before startup.
+Operational notes:
+
+- The API waits for the database health check before startup
+- Compose injects `DATABASE_URL` for the containerized database host
+- Compose requires `JWT_SECRET` to be set and no longer falls back to a default secret
+- The checked-in compose database credentials are suitable for local/dev use only
