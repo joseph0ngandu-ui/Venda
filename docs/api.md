@@ -8,7 +8,7 @@ Local backend:
 
 Current built-in fallback used by the app:
 
-- `https://homeserver.taildbc5d3.ts.net/api/v1`
+- `https://venda.kynto.me/api/v1`
 
 iOS override order:
 
@@ -278,6 +278,51 @@ Non-admin staff may rotate only their own PIN and must include:
 ### `POST /staff/:staffId/deactivate`
 
 Admin-only. Deactivates the target staff record unless that would remove the last active admin.
+
+## Product Endpoints
+
+All product endpoints require `Authorization: Bearer <jwt>`.
+
+- `GET /products`: returns active products and low-stock summary
+- `POST /products`: manager/admin create
+- `PATCH /products/:productId`: manager/admin update
+- `DELETE /products/:productId`: manager/admin archive via `is_active = false`
+
+Product payload fields mirror sync columns: `name`, `category`, `pricing_type`, `suggested_price`, `min_price`, `max_price`, `stock_quantity`, `low_stock_threshold`, `track_stock`, and `is_service`.
+
+## Sales Endpoints
+
+All sales endpoints require `Authorization: Bearer <jwt>`.
+
+- `GET /sales`: returns recent sales for the merchant
+- `POST /sales`: creates a completed sale, inserts line items, and decrements tracked stock transactionally
+
+Checkout request:
+
+```json
+{
+  "payment_method": "Cash",
+  "customer_phone": "260...",
+  "items": [
+    {
+      "product_id": "uuid",
+      "quantity": 2,
+      "final_price": 150
+    }
+  ]
+}
+```
+
+## Money Endpoints
+
+All money endpoints require `Authorization: Bearer <jwt>`.
+
+- `GET /money`: returns mobile-money totals, credit totals, recent MoMo, and credit entries
+- `POST /money/momo`: logs a mobile-money transaction
+- `PATCH /money/momo/:momoId`: updates mobile-money status/linkage
+- `POST /money/momo/:momoId/match`: matches a MoMo transaction to a sale
+- `POST /money/credits`: creates a credit entry
+- `POST /money/credits/:creditId/repay`: records a repayment and updates credit status
 
 ### `POST /staff/:staffId/reactivate`
 

@@ -49,9 +49,9 @@ Important entity-specific fields:
 
 Source:
 
-- `Backend/src/config/db.ts`
+- `Backend/migrations/0001_initial_schema.sql`
 
-Tables created at startup:
+Tables created by the checked-in bootstrap schema:
 
 - `merchants`
 - `staff`
@@ -77,6 +77,6 @@ Key uniqueness rules:
 ## Mapping Notes
 
 - The Core Data model includes `updatedAt` for local mutation tracking and `syncedAt` for client-side sync bookkeeping.
-- The backend schema uses `updated_at` to support pull-based incremental sync.
+- The backend schema uses `updated_at` for mutation timestamps and `server_updated_at` as the internal incremental-sync propagation cursor.
 - Entity naming is conceptually aligned between app and backend, but not every UI flow writes into Core Data or sync payloads yet.
-- Staff roles are not fully normalized across layers: backend bootstrap creates `owner`, while iOS currently defines `admin`, `manager`, and `cashier`.
+- Staff roles are normalized to `admin`, `manager`, and `cashier` in current app/backend responses, while compatibility code still maps legacy `owner` values to `admin`.

@@ -2,8 +2,10 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import {
   getPort,
+  getJwtVerificationSecrets,
   isCorsOriginAllowed,
   resetRuntimeConfigCache,
+  shouldAutoMigrateOnStartup,
   validateRuntimeConfig,
 } from '../src/config/env';
 
@@ -12,6 +14,8 @@ const RUNTIME_ENV_KEYS = [
   'CORS_ALLOW_DEV_ORIGINS',
   'CORS_ALLOW_NO_ORIGIN',
   'DATABASE_URL',
+  'DB_AUTO_MIGRATE',
+  'JWT_SECRET_PREVIOUS',
   'JWT_SECRET',
   'NODE_ENV',
   'PORT',
@@ -60,6 +64,7 @@ test('runtime config allows localhost browser origins by default outside product
     validateRuntimeConfig();
 
     assert.equal(getPort(), 3000);
+    assert.equal(shouldAutoMigrateOnStartup(), true);
     assert.equal(isCorsOriginAllowed(undefined), true);
     assert.equal(isCorsOriginAllowed('http://localhost:5173'), true);
     assert.equal(isCorsOriginAllowed('https://127.0.0.1:8443'), true);
@@ -81,10 +86,44 @@ test('runtime config requires explicit browser origins in production by default'
       validateRuntimeConfig();
 
       assert.equal(getPort(), 3100);
+      assert.equal(shouldAutoMigrateOnStartup(), false);
       assert.equal(isCorsOriginAllowed('https://admin.venda.test'), true);
       assert.equal(isCorsOriginAllowed('https://pos.venda.test'), true);
       assert.equal(isCorsOriginAllowed('http://localhost:5173'), false);
       assert.equal(isCorsOriginAllowed(undefined), false);
+    }
+  );
+});
+
+test('runtime config allows startup migration to be enabled explicitly in production', () => {
+  withRuntimeEnv(
+    {
+      ...validBaseEnv,
+      NODE_ENV: 'production',
+      DB_AUTO_MIGRATE: 'true',
+    },
+    () => {
+      validateRuntimeConfig();
+
+      assert.equal(shouldAutoMigrateOnStartup(), true);
+    }
+  );
+});
+
+test('runtime config accepts previous JWT verification secrets for key rotation', () => {
+  withRuntimeEnv(
+    {
+      ...validBaseEnv,
+      JWT_SECRET_PREVIOUS: 'legacy-secret-one, legacy-secret-two',
+    },
+    () => {
+      validateRuntimeConfig();
+
+      assert.deepEqual(getJwtVerificationSecrets(), [
+        'test-runtime-secret',
+        'legacy-secret-one',
+        'legacy-secret-two',
+      ]);
     }
   );
 });
@@ -109,6 +148,30 @@ test('runtime config rejects invalid port values during startup validation', () 
     },
     () => {
       assert.throws(() => validateRuntimeConfig(), /PORT must be an integer between 1 and 65535/);
+    }
+  );
+});
+
+test('runtime config rejects invalid DB_AUTO_MIGRATE values during startup validation', () => {
+  withRuntimeEnv(
+    {
+      ...validBaseEnv,
+      DB_AUTO_MIGRATE: 'sometimes',
+    },
+    () => {
+      assert.throws(() => validateRuntimeConfig(), /DB_AUTO_MIGRATE must be set to true or false/);
+    }
+  );
+});
+
+test('runtime config rejects insecure previous JWT secrets during startup validation', () => {
+  withRuntimeEnv(
+    {
+      ...validBaseEnv,
+      JWT_SECRET_PREVIOUS: 'replace_with_a_long_random_secret',
+    },
+    () => {
+      assert.throws(() => validateRuntimeConfig(), /JWT_SECRET_PREVIOUS/);
     }
   );
 });

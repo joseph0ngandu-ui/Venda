@@ -19,8 +19,8 @@ Behavior:
 
 - Shows `SplashScreen` on launch
 - Shows a bootstrapping progress state while `AppState` restores or refreshes a session
-- Routes to `OnboardingFlow` when `appState.isAuthenticated == false`
-- Routes to `VendaTabBar` when `appState.isAuthenticated == true`
+- Routes to `OnboardingFlow` when no authenticated session exists or onboarding still needs to resume
+- Routes to `VendaTabBar` only when the user is authenticated and no onboarding checkpoint remains
 
 ## App State
 
@@ -32,13 +32,17 @@ State tracked globally:
 - `currentUser`
 - `isBootstrapping`
 - `authErrorMessage`
+- `pendingOnboardingState`
 
 Defined staff roles:
 
-- `owner`
 - `admin`
 - `manager`
 - `cashier`
+
+Legacy compatibility:
+
+- Older persisted sessions or backend payloads that still contain `owner` now decode as `admin`
 
 Auth behavior:
 
@@ -68,8 +72,9 @@ Current behavior:
 - PIN completion calls `AppState.registerBusiness(...)`, which creates the backend account immediately
 - Merchant login calls `AppState.loginMerchant(...)`
 - Join-business calls `AppState.joinBusiness(...)`
-- Successful registration stores the returned backend session in `pendingSession`
-- The session is only applied to app state when the first-product step completes or is skipped
+- Successful registration now persists the authenticated session immediately and stores a pending onboarding checkpoint for the first-product step
+- Interrupted registration can recover on relaunch by retrying merchant login from keychain-protected recovery data when needed
+- If a saved session exists but onboarding is unfinished, the shell resumes onboarding instead of dropping straight into the main tabs
 - The first-product step creates a local product through `StockViewModel` and then triggers sync
 
 The auth screens are now wired to the backend API, but the first-product step is still local-first rather than part of the backend registration transaction.
@@ -199,10 +204,15 @@ Behavior:
 
 Override guidance from source:
 
-- Provide a full absolute base URL that already includes `/api/v1`
+- Provide an absolute backend origin or an explicit `/api/v1` base URL
 - The override must be present before app launch because `NetworkService.shared` resolves it during startup
+- Empty paths are normalized to `/api/v1`, and a trailing `/` on `/api/v1/` is trimmed automatically
+- Non-HTTP(S) schemes, URLs with query strings or fragments, and unexpected base paths are rejected
+- Plain `http://` is accepted only for local development hosts such as `localhost`, `.local`, and private LAN addresses; remote production-style hosts must use `https://`
 - Invalid URL configuration triggers `fatalError`
-- No App Transport Security exception is checked in for plain local `http://` endpoints
+- The generated Info.plist now includes a checked-in `VENDA_API_BASE_URL` key path via Xcode build settings
+- The Xcode project now enables `NSAppTransportSecurity > NSAllowsLocalNetworking`, so local `http://` development on Apple platforms is less fragile
+- `VendaTests` now covers the API base URL resolution order, normalization behavior, and unsafe-candidate fallback behavior
 
 ## Sync
 
@@ -222,7 +232,7 @@ Behavior:
 Current limitations:
 
 - Local entities are marked synced only on HTTP 200
-- Protocol-level late offline uploads can still be missed by other devices because the backend filters pulls by the client-supplied `updated_at` timestamp
+- Historical late offline uploads that predate the backend `server_updated_at` cursor change may still require a broader resync on some devices
 - Sync is triggered by connectivity changes and auth/session events, but there is no separate retry queue or background scheduler documented in the repo
 
 ## Domain Models

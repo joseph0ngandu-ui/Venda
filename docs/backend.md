@@ -6,17 +6,19 @@ File: `Backend/src/index.ts`
 
 Startup sequence:
 
-1. Load env vars with `dotenv`
+1. Load env vars through `src/config/env.ts`
 2. Validate runtime config with `validateRuntimeConfig()`
 3. Create the Express app
-4. Enable `cors`
-5. Enable JSON request parsing with a `10mb` limit
-6. Mount API routes at `/api/v1`
-7. Expose `GET /health`
-8. Run database initialization
-9. Start listening on `PORT` or `3000`
+4. Apply same-origin plus allowlist-aware CORS rejection middleware
+5. Enable `cors`
+6. Enable JSON request parsing with a `10mb` limit
+7. Mount API routes at `/api/v1`
+8. Expose liveness and readiness endpoints at `/health`, `/live`, `/ready`, `/health/live`, and `/health/ready`
+9. Either run `initDb()` or `verifyDbSchema()` depending on `DB_AUTO_MIGRATE`
+10. Start listening on `PORT` or `3000`
+11. Flip readiness off again during graceful shutdown and drain the HTTP server plus Postgres pool on `SIGTERM` / `SIGINT`
 
-The server exits on startup failure if env validation or database initialization throws.
+The server exits on startup failure if env validation or database migration/verification throws.
 
 ## Scripts
 
@@ -25,8 +27,10 @@ File: `Backend/package.json`
 - `npm run dev`: run the server via `nodemon`
 - `npm run build`: compile TypeScript into `dist/`
 - `npm test`: run the backend regression test suite with Node's built-in test runner
-- `npm run smoke:live`: boot the compiled backend and exercise health plus a minimal auth flow against a real Postgres instance
-- `npm run smoke:live:local`: start the checked-in Docker Postgres service, build the backend, and run the live smoke path
+- `npm run db:migrate`: compile the backend and apply the checked-in SQL migrations in `Backend/migrations/`
+- `npm run db:verify`: compile the backend and confirm migration history plus required tables, sync cursor columns, and triggers already exist
+- `npm run smoke:live`: apply migrations, boot the compiled backend in verification mode, and exercise health/auth/staff flows against a real Postgres instance
+- `npm run smoke:live:local`: start the checked-in Docker Postgres service, build the backend, apply migrations, and run the live smoke path
 - `npm start`: run the compiled server
 
 The backend now includes a small regression test suite focused on auth, staff, and sync controller behavior.
@@ -43,8 +47,11 @@ Current checked-in coverage exercises:
 - compiled startup against a live Postgres instance
 - live `GET /health`
 - live merchant registration, merchant login, and JWT-protected `GET /auth/me`
+- live staff creation, staff listing, staff join/login, role change, deactivation/reactivation, and PIN rotation
+- live sync push plus sync pull round-trip verification
+- live reports summary verification for revenue, payment breakdown, top products, and recent sales
 
-The unit tests still mock the pool layer for controller-level regressions, while the live smoke script covers startup and a minimal production-like auth path.
+The unit tests still mock the pool layer for controller-level regressions, while the live smoke script covers migration, startup verification, and a broader production-like auth/team-management path.
 
 ## Environment Variables
 
@@ -56,16 +63,19 @@ Files:
 Observed runtime variables:
 
 - `DATABASE_URL`: required PostgreSQL connection string used by `pg`
-- `JWT_SECRET`: required signing and verification secret for auth tokens
+- `JWT_SECRET`: required signing secret for auth tokens
+- `JWT_SECRET_PREVIOUS`: optional comma-separated list of previous verification-only secrets during a signing-key rollout
+- `DB_AUTO_MIGRATE`: optional schema mode flag; defaults to `true` outside production and `false` in production
 - `PORT`: optional HTTP listen port, defaults to `3000`
-- `NODE_ENV`: used in Docker, but not read directly in the app code
+- `NODE_ENV`: influences startup migration defaults and loopback-browser CORS defaults
 
 `JWT_SECRET` validation details:
 
 - Missing or empty secrets are rejected
 - Placeholder/example secrets are rejected before the server starts
-- JWT signing and JWT verification both read through `getJwtSecret()`
-- Changing the secret invalidates any previously issued tokens immediately
+- JWT signing uses `JWT_SECRET`
+- JWT verification accepts the current signing secret plus any `JWT_SECRET_PREVIOUS` entries
+- Rotations can preserve still-valid older sessions temporarily if previous verification secrets remain configured until expiry
 
 Rejected placeholder/example values currently include:
 
@@ -86,21 +96,29 @@ Files:
 
 Behavior:
 
-- Starts the compiled backend on `SMOKE_PORT` or `3101`
+- Runs the dedicated migration entrypoint first
+- Starts the compiled backend on `SMOKE_PORT` or `3101` with `DB_AUTO_MIGRATE=false`
 - Waits for `GET /health` to report `{ status: "ok" }`
+- Waits for `GET /ready` to report `{ status: "ready", checks: { database: "ok" } }`
 - Registers a uniquely named merchant against the live Postgres database
 - Logs that merchant in through the public auth endpoint
 - Calls `GET /api/v1/auth/me` with the returned bearer token
+- Creates a staff member, verifies list permissions, joins as staff, promotes the staff account, enforces deactivate/reactivate behavior, and rotates the staff PIN
+- Pushes a product/sale/sale-line-item batch through `/sync/push` and verifies the same records come back through `/sync/pull`
+- Confirms `/reports/summary` reflects the synced sale in totals, payment breakdown, top products, and recent sales
 - Deletes the temporary merchant row at the end so repeated runs do not accumulate smoke-test tenants
 
-CI now runs the same script against a Postgres 15 service container, so startup wiring, bootstrap SQL, bcrypt/JWT auth, and protected-route verification are exercised on every backend workflow run.
+CI now runs the same script against a Postgres 15 service container after an explicit `npm run db:migrate`, and it also builds the production Docker image, so migration wiring, startup verification, bcrypt/JWT auth, container packaging, and core team-management flows are exercised on every backend workflow run.
 
 ## Deployment Notes
 
 - `Backend/.env.example` and `Backend/docker-compose.yml` are local/dev templates with checked-in local Postgres settings. Treat them as starting points, not production manifests.
-- Startup always calls `initDb()`, which runs schema/bootstrap SQL including `CREATE TABLE`, `ALTER TABLE`, and trigger creation statements. Production rollouts should assume startup can change schema state.
-- `app.use(cors())` enables permissive CORS for every origin today. If the API is reachable outside trusted clients, constrain access at the proxy or network layer until app-level origin controls exist.
-- There is no refresh-token or signing-key rollover flow. All replicas must share the same `JWT_SECRET`, and any secret rotation forces re-authentication.
+- Keep `DB_AUTO_MIGRATE=false` in production so API startup verifies schema instead of running DDL on every boot.
+- Run `npm run db:migrate` as a separate deployment step before rolling new application pods/instances.
+- The checked-in migration runner now reads versioned SQL files from `Backend/migrations/`, records filename/checksum metadata in `schema_migrations`, and applies migrations under a PostgreSQL advisory lock.
+- The migration history is still minimal and does not yet include rollback orchestration, so schema rollouts still need extra operator discipline.
+- Requests from browser origins outside the configured allowlist are rejected with `403 Origin not allowed by CORS policy`.
+- There is no refresh-token or `kid`-based signing-key selection flow. All replicas still need a coordinated `JWT_SECRET` / `JWT_SECRET_PREVIOUS` set during rollouts.
 
 ## Routing
 
@@ -119,11 +137,23 @@ Routes:
 - `POST /api/v1/staff/:staffId/pin`
 - `POST /api/v1/staff/:staffId/deactivate`
 - `POST /api/v1/staff/:staffId/reactivate`
+- `GET /api/v1/products`
+- `POST /api/v1/products`
+- `PATCH /api/v1/products/:productId`
+- `DELETE /api/v1/products/:productId`
+- `GET /api/v1/sales`
+- `POST /api/v1/sales`
+- `GET /api/v1/money`
+- `POST /api/v1/money/momo`
+- `PATCH /api/v1/money/momo/:momoId`
+- `POST /api/v1/money/momo/:momoId/match`
+- `POST /api/v1/money/credits`
+- `POST /api/v1/money/credits/:creditId/repay`
 - `GET /api/v1/reports/summary`
 - `POST /api/v1/sync/push`
 - `GET /api/v1/sync/pull`
 
-`/auth/me`, `/staff/*`, `/reports/summary`, `/sync/push`, and `/sync/pull` require JWT auth.
+`/auth/me`, `/staff/*`, `/products/*`, `/sales/*`, `/money/*`, `/reports/summary`, `/sync/push`, and `/sync/pull` require JWT auth.
 
 ## Auth Flow
 
@@ -200,7 +230,7 @@ Behavior:
 
 - Reads the `Authorization` header
 - Expects `Bearer <token>`
-- Verifies the token using the validated runtime secret from `getJwtSecret()`
+- Verifies the token using the validated runtime secret set from `JWT_SECRET` plus any `JWT_SECRET_PREVIOUS` entries
 - Resolves the live staff record from the database on every request when a token includes `staffId`
 - Allows merchant-authenticated tokens to fall back to embedded staff claims when the live staff row is missing
 - Rejects deactivated staff even if they still hold an unexpired JWT

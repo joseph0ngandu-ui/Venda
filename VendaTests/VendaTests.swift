@@ -95,4 +95,130 @@ struct VendaTests {
         #expect(DesignSystem.Spacing.xxl == baseUnit * 8)
         #expect(DesignSystem.Spacing.xxxl == baseUnit * 10)
     }
+
+    @Test("API base URL resolution prefers environment overrides first")
+    func testAPIBaseURLPrefersEnvironmentOverride() {
+        let resolved = NetworkService.resolveAPIBaseURL(
+            environment: ["VENDA_API_BASE_URL": "https://env.example.com/api/v1"],
+            infoDictionary: [
+                "VENDA_API_BASE_URL": "https://info.example.com/api/v1",
+                "API_BASE_URL": "https://legacy.example.com/api/v1"
+            ],
+            userDefaultsValue: "https://defaults.example.com/api/v1"
+        )
+
+        #expect(resolved.absoluteString == "https://env.example.com/api/v1")
+    }
+
+    @Test("API base URL resolution falls back through Info.plist and UserDefaults candidates")
+    func testAPIBaseURLFallbackOrder() {
+        let infoResolved = NetworkService.resolveAPIBaseURL(
+            environment: [:],
+            infoDictionary: [
+                "VENDA_API_BASE_URL": "https://info.example.com/api/v1",
+                "API_BASE_URL": "https://legacy.example.com/api/v1"
+            ],
+            userDefaultsValue: "https://defaults.example.com/api/v1"
+        )
+        #expect(infoResolved.absoluteString == "https://info.example.com/api/v1")
+
+        let legacyInfoResolved = NetworkService.resolveAPIBaseURL(
+            environment: [:],
+            infoDictionary: [
+                "VENDA_API_BASE_URL": "   ",
+                "API_BASE_URL": "https://legacy.example.com/api/v1"
+            ],
+            userDefaultsValue: "https://defaults.example.com/api/v1"
+        )
+        #expect(legacyInfoResolved.absoluteString == "https://legacy.example.com/api/v1")
+
+        let userDefaultsResolved = NetworkService.resolveAPIBaseURL(
+            environment: [:],
+            infoDictionary: [:],
+            userDefaultsValue: "https://defaults.example.com/api/v1"
+        )
+        #expect(userDefaultsResolved.absoluteString == "https://defaults.example.com/api/v1")
+    }
+
+    @Test("API base URL resolution ignores invalid candidates before using the fallback")
+    func testAPIBaseURLIgnoresInvalidCandidates() {
+        let resolved = NetworkService.resolveAPIBaseURL(
+            environment: ["VENDA_API_BASE_URL": "not-a-url"],
+            infoDictionary: [
+                "VENDA_API_BASE_URL": "also-invalid",
+                "API_BASE_URL": "https://legacy.example.com/api/v1"
+            ],
+            userDefaultsValue: "  ",
+            fallbackURLString: "https://fallback.example.com/api/v1"
+        )
+
+        #expect(resolved.absoluteString == "https://legacy.example.com/api/v1")
+
+        let fallbackResolved = NetworkService.resolveAPIBaseURL(
+            environment: [:],
+            infoDictionary: [:],
+            userDefaultsValue: nil,
+            fallbackURLString: "https://fallback.example.com/api/v1"
+        )
+
+        #expect(fallbackResolved.absoluteString == "https://fallback.example.com/api/v1")
+    }
+
+    @Test("API base URL resolution normalizes empty paths and trailing slashes")
+    func testAPIBaseURLNormalization() {
+        let appendedPath = NetworkService.resolveAPIBaseURL(
+            environment: ["VENDA_API_BASE_URL": "https://env.example.com"],
+            infoDictionary: [:],
+            userDefaultsValue: nil
+        )
+        #expect(appendedPath.absoluteString == "https://env.example.com/api/v1")
+
+        let trimmedSlash = NetworkService.resolveAPIBaseURL(
+            environment: ["VENDA_API_BASE_URL": "https://env.example.com/api/v1/"],
+            infoDictionary: [:],
+            userDefaultsValue: nil
+        )
+        #expect(trimmedSlash.absoluteString == "https://env.example.com/api/v1")
+    }
+
+    @Test("API base URL resolution only accepts HTTP for local development hosts")
+    func testAPIBaseURLRejectsUnsafeHTTPOverrides() {
+        let localHTTP = NetworkService.resolveAPIBaseURL(
+            environment: ["VENDA_API_BASE_URL": "http://localhost:3000"],
+            infoDictionary: [:],
+            userDefaultsValue: nil
+        )
+        #expect(localHTTP.absoluteString == "http://localhost:3000/api/v1")
+
+        let privateLANHTTP = NetworkService.resolveAPIBaseURL(
+            environment: ["VENDA_API_BASE_URL": "http://192.168.1.25:3000"],
+            infoDictionary: [:],
+            userDefaultsValue: nil
+        )
+        #expect(privateLANHTTP.absoluteString == "http://192.168.1.25:3000/api/v1")
+
+        let rejectedRemoteHTTP = NetworkService.resolveAPIBaseURL(
+            environment: ["VENDA_API_BASE_URL": "http://api.example.com/api/v1"],
+            infoDictionary: ["VENDA_API_BASE_URL": "https://info.example.com/api/v1"],
+            userDefaultsValue: nil
+        )
+        #expect(rejectedRemoteHTTP.absoluteString == "https://info.example.com/api/v1")
+    }
+
+    @Test("API base URL resolution rejects unexpected paths and URL fragments")
+    func testAPIBaseURLRejectsUnexpectedShapes() {
+        let rejectedPath = NetworkService.resolveAPIBaseURL(
+            environment: ["VENDA_API_BASE_URL": "https://env.example.com/custom/api"],
+            infoDictionary: ["VENDA_API_BASE_URL": "https://info.example.com/api/v1"],
+            userDefaultsValue: nil
+        )
+        #expect(rejectedPath.absoluteString == "https://info.example.com/api/v1")
+
+        let rejectedFragment = NetworkService.resolveAPIBaseURL(
+            environment: ["VENDA_API_BASE_URL": "https://env.example.com/api/v1#fragment"],
+            infoDictionary: ["VENDA_API_BASE_URL": "https://info.example.com/api/v1"],
+            userDefaultsValue: nil
+        )
+        #expect(rejectedFragment.absoluteString == "https://info.example.com/api/v1")
+    }
 }

@@ -53,9 +53,22 @@ jobs:
       - name: Run backend tests
         run: npm test
 
+      - name: Build production backend image
+        run: docker build -t venda-backend-ci .
+
+      - name: Apply backend schema migration
+        env:
+          DATABASE_URL: postgres://venda_ci:venda_ci_pass@127.0.0.1:5432/venda_ci
+          JWT_SECRET: venda-ci-db-migrate-secret-2026-04-04
+          NODE_ENV: production
+          DB_AUTO_MIGRATE: false
+        run: npm run db:migrate
+
       - name: Run live backend smoke against Postgres
         env:
           DATABASE_URL: postgres://venda_ci:venda_ci_pass@127.0.0.1:5432/venda_ci
-          JWT_SECRET: venda-ci-live-smoke-secret-2026-04-02
+          JWT_SECRET: venda-ci-live-smoke-secret-2026-04-04
+          NODE_ENV: production
+          DB_AUTO_MIGRATE: false
           SMOKE_PORT: 3101
         run: npm run smoke:live

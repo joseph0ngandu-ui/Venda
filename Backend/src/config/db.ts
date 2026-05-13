@@ -1,185 +1,45 @@
 import './env';
-import { Pool } from 'pg';
+import { Pool, PoolClient } from 'pg';
+import { applyPendingMigrations, verifyMigrationState } from './migrations';
 
-export const dbInitString = `
-CREATE TABLE IF NOT EXISTS merchants (
-    id UUID PRIMARY KEY,
-    business_name VARCHAR(255) NOT NULL,
-    business_type VARCHAR(100) NOT NULL,
-    phone VARCHAR(20) UNIQUE NOT NULL,
-    pin_hash VARCHAR(255) NOT NULL,
-    currency VARCHAR(10) DEFAULT 'ZMW',
-    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
-    server_updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
-);
+const SYNC_TABLES = [
+  'merchants',
+  'staff',
+  'products',
+  'sales',
+  'sale_line_items',
+  'momo_transactions',
+  'credit_entries',
+] as const;
 
-CREATE TABLE IF NOT EXISTS staff (
-    id UUID PRIMARY KEY,
-    merchant_id UUID REFERENCES merchants(id) ON DELETE CASCADE,
-    name VARCHAR(255) NOT NULL,
-    role VARCHAR(50) NOT NULL,
-    pin_hash VARCHAR(255) NOT NULL,
-    is_active BOOLEAN DEFAULT TRUE,
-    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
-    server_updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
-);
-
-ALTER TABLE staff
-    ADD COLUMN IF NOT EXISTS created_by_staff_id UUID REFERENCES staff(id) ON DELETE SET NULL;
-
-ALTER TABLE staff
-    ADD COLUMN IF NOT EXISTS last_login_at TIMESTAMP WITH TIME ZONE;
-
-ALTER TABLE staff
-    ADD COLUMN IF NOT EXISTS pin_updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP;
-
-ALTER TABLE staff
-    ADD COLUMN IF NOT EXISTS deactivated_at TIMESTAMP WITH TIME ZONE;
-
-UPDATE staff
-SET pin_updated_at = COALESCE(pin_updated_at, created_at, CURRENT_TIMESTAMP)
-WHERE pin_updated_at IS NULL;
-
-UPDATE staff
-SET deactivated_at = CASE
-    WHEN is_active = FALSE AND deactivated_at IS NULL THEN updated_at
-    ELSE deactivated_at
-END
-WHERE is_active = FALSE;
-
-CREATE INDEX IF NOT EXISTS idx_staff_merchant_id ON staff(merchant_id);
-CREATE INDEX IF NOT EXISTS idx_staff_merchant_active_role ON staff(merchant_id, is_active, role);
-
-CREATE TABLE IF NOT EXISTS products (
-    id UUID PRIMARY KEY,
-    merchant_id UUID REFERENCES merchants(id) ON DELETE CASCADE,
-    name VARCHAR(255) NOT NULL,
-    category VARCHAR(100),
-    pricing_type VARCHAR(50) NOT NULL,
-    suggested_price DECIMAL(12, 2),
-    min_price DECIMAL(12, 2),
-    max_price DECIMAL(12, 2),
-    stock_quantity INTEGER DEFAULT 0,
-    low_stock_threshold INTEGER DEFAULT 5,
-    track_stock BOOLEAN DEFAULT TRUE,
-    is_service BOOLEAN DEFAULT FALSE,
-    is_active BOOLEAN DEFAULT TRUE,
-    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
-    server_updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
-);
-
-CREATE TABLE IF NOT EXISTS sales (
-    id UUID PRIMARY KEY,
-    merchant_id UUID REFERENCES merchants(id) ON DELETE CASCADE,
-    staff_id UUID REFERENCES staff(id) ON DELETE SET NULL,
-    reference VARCHAR(50) NOT NULL,
-    total_amount DECIMAL(12, 2) NOT NULL,
-    payment_method VARCHAR(50) NOT NULL,
-    customer_phone VARCHAR(20),
-    status VARCHAR(50) DEFAULT 'completed',
-    notes TEXT,
-    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
-    server_updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
-    UNIQUE(merchant_id, reference)
-);
-
-CREATE TABLE IF NOT EXISTS sale_line_items (
-    id UUID PRIMARY KEY,
-    sale_id UUID REFERENCES sales(id) ON DELETE CASCADE,
-    product_id UUID REFERENCES products(id) ON DELETE SET NULL,
-    quantity DECIMAL(10, 2) NOT NULL,
-    unit_price DECIMAL(12, 2) NOT NULL,
-    original_price DECIMAL(12, 2),
-    final_price DECIMAL(12, 2) NOT NULL,
-    discount_amount DECIMAL(12, 2) DEFAULT 0,
-    discount_reason VARCHAR(255),
-    price_override_by VARCHAR(255),
-    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
-    server_updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
-);
-
-CREATE TABLE IF NOT EXISTS momo_transactions (
-    id UUID PRIMARY KEY,
-    merchant_id UUID REFERENCES merchants(id) ON DELETE CASCADE,
-    sale_id UUID REFERENCES sales(id) ON DELETE SET NULL,
-    transaction_ref VARCHAR(100) NOT NULL,
-    sender_phone VARCHAR(20) NOT NULL,
-    amount DECIMAL(12, 2) NOT NULL,
-    status VARCHAR(50) DEFAULT 'unmatched',
-    received_at TIMESTAMP WITH TIME ZONE NOT NULL,
-    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
-    server_updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
-    UNIQUE(merchant_id, transaction_ref)
-);
-
-CREATE TABLE IF NOT EXISTS credit_entries (
-    id UUID PRIMARY KEY,
-    merchant_id UUID REFERENCES merchants(id) ON DELETE CASCADE,
-    sale_id UUID REFERENCES sales(id) ON DELETE CASCADE,
-    customer_name VARCHAR(255) NOT NULL,
-    customer_phone VARCHAR(20),
-    amount DECIMAL(12, 2) NOT NULL,
-    amount_repaid DECIMAL(12, 2) DEFAULT 0,
-    due_date TIMESTAMP WITH TIME ZONE,
-    status VARCHAR(50) DEFAULT 'outstanding',
-    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
-    server_updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
-);
-
-DO $$
-DECLARE
-    t text;
-BEGIN
-    FOREACH t IN ARRAY ARRAY['merchants', 'staff', 'products', 'sales', 'sale_line_items', 'momo_transactions', 'credit_entries']
-    LOOP
-        EXECUTE format('ALTER TABLE %I ADD COLUMN IF NOT EXISTS server_updated_at TIMESTAMP WITH TIME ZONE', t);
-        EXECUTE format('UPDATE %I SET server_updated_at = COALESCE(server_updated_at, updated_at, created_at, CURRENT_TIMESTAMP) WHERE server_updated_at IS NULL', t);
-        EXECUTE format('ALTER TABLE %I ALTER COLUMN server_updated_at SET DEFAULT CURRENT_TIMESTAMP', t);
-    END LOOP;
-END;
-$$;
-
--- Trigger function to update updated_at timestamp
-CREATE OR REPLACE FUNCTION update_updated_at_column()
-RETURNS TRIGGER AS $$
-BEGIN
-    NEW.updated_at = CURRENT_TIMESTAMP;
-    NEW.server_updated_at = CURRENT_TIMESTAMP;
-    RETURN NEW;
-END;
-$$ language 'plpgsql';
-
-DO $$
-DECLARE
-    t text;
-BEGIN
-    FOR t IN 
-        SELECT table_name FROM information_schema.tables 
-        WHERE table_schema = 'public' 
-        AND table_name IN ('merchants', 'staff', 'products', 'sales', 'sale_line_items', 'momo_transactions', 'credit_entries')
-    LOOP
-        EXECUTE format('
-            DROP TRIGGER IF EXISTS update_%I_updated_at ON %I;
-            CREATE TRIGGER update_%I_updated_at
-            BEFORE UPDATE ON %I
-            FOR EACH ROW
-            EXECUTE FUNCTION update_updated_at_column();
-        ', t, t, t, t);
-    END LOOP;
-END;
-$$;
-`;
+const REQUIRED_TRIGGER_NAMES = SYNC_TABLES.map(tableName => `update_${tableName}_updated_at`);
 
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
 });
+
+const formatMissingList = (values: readonly string[]) => values.join(', ');
+
+const withClient = async <T>(callback: (client: PoolClient) => Promise<T>, existingClient?: PoolClient) => {
+  if (existingClient) {
+    return callback(existingClient);
+  }
+
+  const client = await pool.connect();
+
+  try {
+    return await callback(client);
+  } finally {
+    client.release();
+  }
+};
+
+export const checkDbConnectivity = async (existingClient?: PoolClient) => {
+  return withClient(async client => {
+    const result = await client.query<{ ok: number }>('SELECT 1 AS ok');
+    return result.rows[0]?.ok === 1;
+  }, existingClient);
+};
 
 export const initDb = async () => {
   if (!process.env.DATABASE_URL) {
@@ -187,12 +47,101 @@ export const initDb = async () => {
   }
 
   try {
-    await pool.query(dbInitString);
-    console.log('Database initialized successfully');
+    await withClient(async client => {
+      const result = await applyPendingMigrations(client);
+      if (result.pendingCount > 0) {
+        console.log(`Applied database migrations: ${result.appliedVersions.join(', ')}`);
+      } else {
+        console.log('No pending database migrations were found');
+      }
+
+      await verifyDbSchema(client);
+    });
+
+    console.log('Database schema migration completed successfully');
   } catch (error) {
     console.error('Error initializing database:', error);
     throw error;
   }
+};
+
+export const verifyDbSchema = async (existingClient?: PoolClient) => {
+  if (!process.env.DATABASE_URL) {
+    throw new Error('DATABASE_URL is not set');
+  }
+
+  return withClient(async client => {
+    const migrationState = await verifyMigrationState(client);
+
+    const tableResult = await client.query<{ table_name: string }>(
+      `
+        SELECT table_name
+        FROM information_schema.tables
+        WHERE table_schema = 'public'
+          AND table_name = ANY($1::text[])
+      `,
+      [SYNC_TABLES]
+    );
+
+    const presentTables = new Set(tableResult.rows.map(row => row.table_name));
+    const missingTables = SYNC_TABLES.filter(tableName => !presentTables.has(tableName));
+
+    if (missingTables.length > 0) {
+      throw new Error(
+        `Database schema is missing required tables: ${formatMissingList(missingTables)}. Run \`npm run db:migrate\` before starting the API in production.`
+      );
+    }
+
+    const columnResult = await client.query<{ table_name: string }>(
+      `
+        SELECT table_name
+        FROM information_schema.columns
+        WHERE table_schema = 'public'
+          AND table_name = ANY($1::text[])
+          AND column_name = 'server_updated_at'
+      `,
+      [SYNC_TABLES]
+    );
+
+    const presentCursorTables = new Set(columnResult.rows.map(row => row.table_name));
+    const missingCursorColumns = SYNC_TABLES.filter(tableName => !presentCursorTables.has(tableName));
+
+    if (missingCursorColumns.length > 0) {
+      throw new Error(
+        `Database schema is missing server_updated_at on: ${formatMissingList(missingCursorColumns)}. Run \`npm run db:migrate\` before starting the API in production.`
+      );
+    }
+
+    const triggerResult = await client.query<{ event_object_table: string; trigger_name: string }>(
+      `
+        SELECT event_object_table, trigger_name
+        FROM information_schema.triggers
+        WHERE trigger_schema = 'public'
+          AND event_object_table = ANY($1::text[])
+          AND trigger_name = ANY($2::text[])
+      `,
+      [SYNC_TABLES, REQUIRED_TRIGGER_NAMES]
+    );
+
+    const triggerMap = new Map(triggerResult.rows.map(row => [row.event_object_table, row.trigger_name]));
+    const missingTriggers = SYNC_TABLES.filter(
+      tableName => triggerMap.get(tableName) !== `update_${tableName}_updated_at`
+    );
+
+    if (missingTriggers.length > 0) {
+      throw new Error(
+        `Database schema is missing updated_at triggers for: ${formatMissingList(missingTriggers)}. Run \`npm run db:migrate\` before starting the API in production.`
+      );
+    }
+
+    console.log(
+      `Database schema verification completed successfully at migration ${migrationState.latestVersion ?? 'unknown'}`
+    );
+  }, existingClient);
+};
+
+export const closeDbPool = async () => {
+  await pool.end();
 };
 
 export default pool;

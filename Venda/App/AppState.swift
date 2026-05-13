@@ -2,13 +2,36 @@ import Foundation
 import Combine
 
 enum StaffRole: String, Codable {
-    case owner
     case admin
     case manager
     case cashier
-    
+
     var isAdminOrManager: Bool {
-        return self == .owner || self == .admin || self == .manager
+        self == .admin || self == .manager
+    }
+
+    init(from decoder: Decoder) throws {
+        let container = try decoder.singleValueContainer()
+        let rawValue = try container.decode(String.self).trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+
+        switch rawValue {
+        case "owner", "admin":
+            self = .admin
+        case "manager":
+            self = .manager
+        case "cashier":
+            self = .cashier
+        default:
+            throw DecodingError.dataCorruptedError(
+                in: container,
+                debugDescription: "Unsupported staff role: \(rawValue)"
+            )
+        }
+    }
+
+    func encode(to encoder: Encoder) throws {
+        var container = encoder.singleValueContainer()
+        try container.encode(rawValue)
     }
 }
 
@@ -271,34 +294,18 @@ class AppState: ObservableObject {
     }
 
     private func recoverPendingRegistrationSession(
-        using recoveryAttempt: PendingRegistrationAttempt
+        using attempt: PendingRegistrationAttempt
     ) async -> AuthenticatedSession? {
         do {
             return try await networkService.loginMerchant(
-                phone: recoveryAttempt.phone,
-                pin: recoveryAttempt.pin
+                phone: attempt.phone,
+                pin: attempt.pin
             )
         } catch {
             return nil
         }
     }
-}
 
-extension CurrentUser {
-    init(identity: AuthIdentityResponse) {
-        self.id = identity.staff.id
-        self.merchantID = identity.merchant.id
-        self.name = identity.staff.name
-        self.role = identity.staff.role
-        self.companyCode = identity.merchant.companyCode
-        self.businessName = identity.merchant.businessName
-        self.businessType = identity.merchant.businessType
-        self.phone = identity.staff.phone ?? identity.merchant.phone
-        self.currency = identity.merchant.currency ?? "ZMW"
-    }
-}
-
-private extension AppState {
     static func normalizePhoneNumber(_ rawValue: String) -> String {
         let digits = rawValue.filter(\.isNumber)
 
@@ -306,14 +313,28 @@ private extension AppState {
             return digits
         }
 
-        if digits.hasPrefix("0"), digits.count == 10 {
-            return "260\(digits.dropFirst())"
+        if digits.hasPrefix("0"), digits.count >= 10 {
+            return "260" + digits.dropFirst()
         }
 
         if digits.count == 9 {
-            return "260\(digits)"
+            return "260" + digits
         }
 
         return digits
+    }
+}
+
+extension CurrentUser {
+    init(identity: AuthIdentityResponse) {
+        self.id = identity.user.id
+        self.merchantID = identity.merchant.id
+        self.name = identity.user.name
+        self.role = identity.user.role
+        self.companyCode = identity.companyCode
+        self.businessName = identity.merchant.businessName
+        self.businessType = identity.merchant.businessType
+        self.phone = identity.merchant.phone
+        self.currency = identity.merchant.currency ?? "ZMW"
     }
 }

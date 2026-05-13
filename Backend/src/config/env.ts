@@ -18,8 +18,10 @@ type CorsRuntimeConfig = {
 };
 
 let cachedCorsConfig: CorsRuntimeConfig | null = null;
+let cachedAutoMigrateOnStartup: boolean | null = null;
 let cachedDatabaseUrl: string | null = null;
 let cachedJwtSecret: string | null = null;
+let cachedJwtVerificationSecrets: string[] | null = null;
 let cachedPort: number | null = null;
 
 const getTrimmedEnv = (name: string) => {
@@ -102,6 +104,37 @@ const readJwtSecretFromEnv = () => {
   return jwtSecret;
 };
 
+const validateJwtSecretValue = (secret: string, envName: string) => {
+  if (!secret) {
+    throw new Error(`${envName} must not be empty.`);
+  }
+
+  if (INSECURE_JWT_SECRET_VALUES.has(secret)) {
+    throw new Error(`${envName} must be replaced with a unique secret before starting the API.`);
+  }
+
+  return secret;
+};
+
+const readJwtVerificationSecretsFromEnv = () => {
+  const secrets = [readJwtSecretFromEnv()];
+  const previousSecretsValue = getTrimmedEnv('JWT_SECRET_PREVIOUS');
+
+  if (!previousSecretsValue) {
+    return secrets;
+  }
+
+  for (const previousSecret of previousSecretsValue.split(',')) {
+    const normalizedSecret = validateJwtSecretValue(previousSecret.trim(), 'JWT_SECRET_PREVIOUS');
+
+    if (!secrets.includes(normalizedSecret)) {
+      secrets.push(normalizedSecret);
+    }
+  }
+
+  return secrets;
+};
+
 const readDatabaseUrlFromEnv = () => {
   const databaseUrl = getTrimmedEnv('DATABASE_URL');
 
@@ -160,6 +193,11 @@ const readCorsConfigFromEnv = (): CorsRuntimeConfig => {
   };
 };
 
+const readAutoMigrateOnStartupFromEnv = () => {
+  const nodeEnv = getTrimmedEnv('NODE_ENV').toLowerCase();
+  return readBooleanEnv('DB_AUTO_MIGRATE', nodeEnv !== 'production');
+};
+
 const isLoopbackOrigin = (origin: string) => {
   try {
     const parsedOrigin = new URL(origin);
@@ -183,6 +221,15 @@ export const getJwtSecret = () => {
   return cachedJwtSecret;
 };
 
+export const getJwtVerificationSecrets = () => {
+  if (cachedJwtVerificationSecrets) {
+    return cachedJwtVerificationSecrets;
+  }
+
+  cachedJwtVerificationSecrets = readJwtVerificationSecretsFromEnv();
+  return cachedJwtVerificationSecrets;
+};
+
 export const getPort = () => {
   if (cachedPort !== null) {
     return cachedPort;
@@ -199,6 +246,15 @@ export const getDatabaseUrl = () => {
 
   cachedDatabaseUrl = readDatabaseUrlFromEnv();
   return cachedDatabaseUrl;
+};
+
+export const shouldAutoMigrateOnStartup = () => {
+  if (cachedAutoMigrateOnStartup !== null) {
+    return cachedAutoMigrateOnStartup;
+  }
+
+  cachedAutoMigrateOnStartup = readAutoMigrateOnStartupFromEnv();
+  return cachedAutoMigrateOnStartup;
 };
 
 export const isCorsOriginAllowed = (origin: string | undefined) => {
@@ -233,17 +289,24 @@ export const isCorsOriginAllowed = (origin: string | undefined) => {
 
 export const validateRuntimeConfig = () => {
   getDatabaseUrl();
-  getJwtSecret();
+  getJwtVerificationSecrets();
   getPort();
+  shouldAutoMigrateOnStartup();
 
   if (!cachedCorsConfig) {
     cachedCorsConfig = readCorsConfigFromEnv();
   }
 };
 
+export const validateDatabaseConfig = () => {
+  getDatabaseUrl();
+};
+
 export const resetRuntimeConfigCache = () => {
   cachedCorsConfig = null;
+  cachedAutoMigrateOnStartup = null;
   cachedDatabaseUrl = null;
   cachedJwtSecret = null;
+  cachedJwtVerificationSecrets = null;
   cachedPort = null;
 };

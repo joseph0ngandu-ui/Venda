@@ -149,7 +149,11 @@ protocol NetworkServiceProtocol {
 
 final class NetworkService: NetworkServiceProtocol {
     static let shared = NetworkService()
-    static let defaultAPIBaseURLString = "https://homeserver.taildbc5d3.ts.net/api/v1"
+    static let defaultAPIBaseURLString = "https://venda.kynto.me/api/v1"
+    static let apiBaseURLEnvironmentKey = "VENDA_API_BASE_URL"
+    static let apiBaseURLInfoPlistKeys = ["VENDA_API_BASE_URL", "API_BASE_URL"]
+    static let apiBaseURLUserDefaultsKey = "venda.api.base.url"
+    private static let requiredAPIPath = "/api/v1"
 
     let apiBaseURL: URL
     private let decoder: JSONDecoder
@@ -409,22 +413,97 @@ final class NetworkService: NetworkServiceProtocol {
         return try encoder.encode(wrapped)
     }
 
-    private static func resolveAPIBaseURL() -> URL {
+    static func resolveAPIBaseURL(
+        environment: [String: String],
+        infoDictionary: [String: Any],
+        userDefaultsValue: String?,
+        fallbackURLString: String = defaultAPIBaseURLString
+    ) -> URL {
         let candidates = [
-            ProcessInfo.processInfo.environment["VENDA_API_BASE_URL"],
-            Bundle.main.object(forInfoDictionaryKey: "VENDA_API_BASE_URL") as? String,
-            Bundle.main.object(forInfoDictionaryKey: "API_BASE_URL") as? String,
-            UserDefaults.standard.string(forKey: "venda.api.base.url"),
-            Self.defaultAPIBaseURLString
+            environment[apiBaseURLEnvironmentKey],
+            infoDictionary[apiBaseURLInfoPlistKeys[0]] as? String,
+            infoDictionary[apiBaseURLInfoPlistKeys[1]] as? String,
+            userDefaultsValue,
+            fallbackURLString
         ]
 
         for candidate in candidates.compactMap({ $0?.trimmingCharacters(in: .whitespacesAndNewlines) }) {
-            if let url = URL(string: candidate), url.scheme != nil, url.host != nil {
+            if let url = normalizedAPIBaseURL(from: candidate) {
                 return url
             }
         }
 
         fatalError("Invalid API base URL configuration")
+    }
+
+    private static func normalizedAPIBaseURL(from candidate: String) -> URL? {
+        let trimmed = candidate.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty,
+              var components = URLComponents(string: trimmed),
+              let rawScheme = components.scheme?.lowercased(),
+              let host = components.host?.lowercased(),
+              !host.isEmpty,
+              components.query == nil,
+              components.fragment == nil else {
+            return nil
+        }
+
+        guard rawScheme == "https" || rawScheme == "http" else {
+            return nil
+        }
+
+        if rawScheme == "http" && !isLocalDevelopmentHost(host) {
+            return nil
+        }
+
+        guard let normalizedPath = normalizedAPIPath(from: components.path) else {
+            return nil
+        }
+
+        components.scheme = rawScheme
+        components.host = host
+        components.path = normalizedPath
+
+        return components.url
+    }
+
+    private static func normalizedAPIPath(from path: String) -> String? {
+        let trimmedPath = path.trimmingCharacters(in: CharacterSet(charactersIn: "/"))
+
+        if trimmedPath.isEmpty {
+            return requiredAPIPath
+        }
+
+        let normalizedPath = "/" + trimmedPath
+        return normalizedPath == requiredAPIPath ? normalizedPath : nil
+    }
+
+    private static func isLocalDevelopmentHost(_ host: String) -> Bool {
+        if host == "localhost" || host == "::1" || host.hasSuffix(".local") {
+            return true
+        }
+
+        if host.hasPrefix("127.") || host.hasPrefix("10.") || host.hasPrefix("192.168.") {
+            return true
+        }
+
+        let octets = host.split(separator: ".")
+        if octets.count == 4,
+           octets[0] == "172",
+           let secondOctet = Int(octets[1]),
+           (16...31).contains(secondOctet) {
+            return true
+        }
+
+        return !host.contains(".")
+    }
+
+    private static func resolveAPIBaseURL() -> URL {
+        resolveAPIBaseURL(
+            environment: ProcessInfo.processInfo.environment,
+            infoDictionary: Bundle.main.infoDictionary ?? [:],
+            userDefaultsValue: UserDefaults.standard.string(forKey: apiBaseURLUserDefaultsKey)
+        )
     }
 }
 

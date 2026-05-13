@@ -13,8 +13,7 @@ struct AdminPanelScreen: View {
     }
 
     private var canEditStaff: Bool {
-        guard let role = appState.currentUser?.role else { return false }
-        return role == .admin || role == .owner
+        appState.currentUser?.role == .admin
     }
 
     var body: some View {
@@ -150,7 +149,7 @@ private struct StaffRow: View {
 
     private var roleColor: Color {
         switch member.role {
-        case .admin, .owner:
+        case .admin:
             return .vendaEmber
         case .manager:
             return .vendaForest

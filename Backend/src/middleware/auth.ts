@@ -1,7 +1,7 @@
 import { Request, Response, NextFunction } from 'express';
 import jwt, { JwtPayload } from 'jsonwebtoken';
 import pool from '../config/db';
-import { getJwtSecret } from '../config/env';
+import { getJwtVerificationSecrets } from '../config/env';
 
 export type StaffRole = 'admin' | 'manager' | 'cashier';
 
@@ -67,6 +67,18 @@ export interface AuthRequest extends Request {
   authType?: 'merchant' | 'staff';
 }
 
+const verifyJwtToken = (token: string) => {
+  for (const secret of getJwtVerificationSecrets()) {
+    try {
+      return jwt.verify(token, secret) as AuthTokenPayload;
+    } catch {
+      continue;
+    }
+  }
+
+  throw new Error('JWT verification failed for all configured secrets');
+};
+
 export const authenticateJWT = async (req: AuthRequest, res: Response, next: NextFunction) => {
   const authHeader = req.headers.authorization;
 
@@ -83,7 +95,7 @@ export const authenticateJWT = async (req: AuthRequest, res: Response, next: Nex
   }
 
   try {
-    const decoded = jwt.verify(token, getJwtSecret()) as AuthTokenPayload;
+    const decoded = verifyJwtToken(token);
     const merchantId = decoded.merchantId ?? decoded.id;
 
     if (!merchantId) {

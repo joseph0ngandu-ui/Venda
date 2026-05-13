@@ -128,3 +128,49 @@ test('authenticateJWT rejects staff sessions when the staff row is missing', asy
     restoreQuery();
   }
 });
+
+test('authenticateJWT accepts tokens signed with a configured previous JWT secret', async () => {
+  const previousSecret = 'backend-previous-test-secret';
+  process.env.JWT_SECRET_PREVIOUS = previousSecret;
+  resetRuntimeConfigCache();
+  const token = jwt.sign(
+    {
+      merchantId: 'merchant-1',
+      companyCode: 'VND-MERCHANT',
+      authType: 'merchant',
+      staffId: 'staff-admin',
+      staffName: 'Recovered Admin',
+      role: 'admin',
+    },
+    previousSecret
+  );
+
+  const restoreQuery = replaceMethod(
+    pool,
+    'query',
+    (async () => ({ rows: [] })) as unknown as typeof pool.query
+  );
+
+  try {
+    const req = createAuthRequest({
+      headers: {
+        authorization: `Bearer ${token}`,
+      },
+    });
+    const { res, state } = createMockResponse();
+    let nextCalled = false;
+
+    await authenticateJWT(req, res, () => {
+      nextCalled = true;
+    });
+
+    assert.equal(nextCalled, true);
+    assert.equal(state.statusCode, 200);
+    assert.equal(req.merchant?.id, 'merchant-1');
+    assert.equal(req.staff?.role, 'admin');
+  } finally {
+    delete process.env.JWT_SECRET_PREVIOUS;
+    resetRuntimeConfigCache();
+    restoreQuery();
+  }
+});

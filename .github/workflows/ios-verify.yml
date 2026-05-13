@@ -18,8 +18,8 @@ on:
   workflow_dispatch:
 
 jobs:
-  build:
-    name: Build App Target
+  build_and_test:
+    name: Build App Target And Run Unit Tests
     runs-on: macos-26
     timeout-minutes: 30
     steps:
@@ -36,3 +36,14 @@ jobs:
             -derivedDataPath build/DerivedData \
             CODE_SIGNING_ALLOWED=NO \
             build
+
+      - name: Run Venda unit tests
+        run: |
+          xcodebuild \
+            -project Venda.xcodeproj \
+            -scheme Venda \
+            -destination 'platform=iOS Simulator,name=iPhone 16' \
+            -derivedDataPath build/DerivedData \
+            CODE_SIGNING_ALLOWED=NO \
+            -only-testing:VendaTests \
+            test
