@@ -474,7 +474,9 @@ svg {
 
 .button-row {
   display: flex;
+  flex-wrap: wrap;
   gap: 8px;
+  justify-content: flex-end;
 }
 
 .screen-header h1 {
@@ -1010,7 +1012,7 @@ svg {
     left: 12px;
     z-index: 30;
     display: grid;
-    grid-template-columns: repeat(5, minmax(0, 1fr));
+    grid-template-columns: repeat(6, minmax(0, 1fr));
     gap: 6px;
     border: 1px solid var(--line);
     border-radius: 22px;
@@ -1020,13 +1022,21 @@ svg {
   }
 
   .mobile-tabs button {
+    min-width: 0;
     min-height: 58px;
     display: grid;
     place-items: center;
     gap: 4px;
     border-radius: 16px;
-    font-size: 11px;
+    font-size: 10px;
     font-weight: 800;
+  }
+
+  .mobile-tabs button span {
+    max-width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
   }
 }
 
@@ -1043,6 +1053,15 @@ svg {
 
   .top-bar {
     gap: 10px;
+  }
+
+  .button-row {
+    width: 100%;
+    justify-content: stretch;
+  }
+
+  .button-row .venda-button {
+    flex: 1 1 134px;
   }
 
   .refresh-button {

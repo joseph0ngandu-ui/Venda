@@ -10,10 +10,10 @@ import {
   CreditCard,
   Home,
   LogOut,
-  Menu,
   PackagePlus,
   Plus,
   ReceiptText,
+  RefreshCw,
   Search,
   Settings,
   ShieldCheck,
@@ -139,14 +139,19 @@ function App() {
   );
 
   useEffect(() => {
-    if (!token) {
+    if (!token || !session) {
       return;
     }
 
     api
       .me(token)
       .then(verifiedSession => {
-        setSession(verifiedSession);
+        setSession({
+          ...verifiedSession,
+          token: verifiedSession.token ?? token,
+          token_type: verifiedSession.token_type ?? session.token_type,
+          expires_at: verifiedSession.expires_at ?? session.expires_at,
+        });
         void loadWorkspace();
       })
       .catch(() => {
@@ -738,21 +743,33 @@ function StockScreen({
       </MetricGrid>
       <SearchField value={search} onChange={setSearch} placeholder="Search products" />
       <div className="data-list">
-        {filteredProducts.map(product => (
-          <button className="list-row" key={product.id} onClick={() => setEditorProduct(product)}>
-            <span className={`row-icon ${isLowStock(product) ? 'ember' : 'forest'}`}>
-              <Boxes />
-            </span>
-            <span className="row-main">
-              <strong>{product.name}</strong>
-              <span>{product.category}</span>
-            </span>
-            <span className="row-meta">
-              <b>{productDisplayPrice(product)}</b>
-              <small>{product.track_stock && !product.is_service ? `${product.stock_quantity} in stock` : product.pricing_type}</small>
-            </span>
-          </button>
-        ))}
+        {filteredProducts.map(product => {
+          const rowContent = (
+            <>
+              <span className={`row-icon ${isLowStock(product) ? 'ember' : 'forest'}`}>
+                <Boxes />
+              </span>
+              <span className="row-main">
+                <strong>{product.name}</strong>
+                <span>{product.category}</span>
+              </span>
+              <span className="row-meta">
+                <b>{productDisplayPrice(product)}</b>
+                <small>{product.track_stock && !product.is_service ? `${product.stock_quantity} in stock` : product.pricing_type}</small>
+              </span>
+            </>
+          );
+
+          return canManage ? (
+            <button className="list-row" key={product.id} onClick={() => setEditorProduct(product)}>
+              {rowContent}
+            </button>
+          ) : (
+            <div className="list-row static" key={product.id}>
+              {rowContent}
+            </div>
+          );
+        })}
       </div>
       {showCreate ? (
         <Modal title="Add product" onClose={() => setShowCreate(false)}>
@@ -777,7 +794,14 @@ function StockScreen({
             }}
           />
           {canManage ? (
-            <Button tone="danger" icon={<Trash2 />} onClick={() => onDelete(editorProduct.id)}>
+            <Button
+              tone="danger"
+              icon={<Trash2 />}
+              onClick={async () => {
+                await onDelete(editorProduct.id);
+                setEditorProduct(null);
+              }}
+            >
               Archive product
             </Button>
           ) : null}
@@ -804,12 +828,12 @@ function MoneyScreen({
       <div className="screen-title-row">
         <ScreenHeader title="Money" subtitle="Mobile money and credit health" />
         <div className="button-row">
-          <IconButton label="Log MoMo" onClick={() => setShowMomo(true)}>
-            <Smartphone />
-          </IconButton>
-          <IconButton label="Add credit" onClick={() => setShowCredit(true)}>
-            <BookOpen />
-          </IconButton>
+          <Button tone="secondary" icon={<Smartphone />} onClick={() => setShowMomo(true)}>
+            Log MoMo
+          </Button>
+          <Button tone="secondary" icon={<BookOpen />} onClick={() => setShowCredit(true)}>
+            Add credit
+          </Button>
         </div>
       </div>
       <MetricGrid>
@@ -1363,7 +1387,7 @@ function DesktopRail({
 function MobileTabs({ activeTab, onChange }: { activeTab: TabKey; onChange: (tab: TabKey) => void }) {
   return (
     <nav className="mobile-tabs">
-      {tabs.slice(0, 5).map(tab => (
+      {tabs.map(tab => (
         <button key={tab.key} className={activeTab === tab.key ? 'active' : ''} onClick={() => onChange(tab.key)}>
           {tab.icon}
           <span>{tab.shortLabel ?? tab.label}</span>
@@ -1380,8 +1404,8 @@ function TopBar({ session, onRefresh, isLoading }: { session: AuthSession; onRef
         <span className="eyebrow">{session.company_code}</span>
         <h2>{session.merchant.business_name}</h2>
       </div>
-      <button className="refresh-button" onClick={onRefresh} disabled={isLoading}>
-        <Menu />
+      <button className="refresh-button" aria-label="Refresh workspace" onClick={onRefresh} disabled={isLoading}>
+        <RefreshCw />
         {isLoading ? 'Syncing' : 'Refresh'}
       </button>
     </header>
@@ -1690,7 +1714,7 @@ const tabs: Array<{ key: TabKey; label: string; shortLabel?: string; icon: React
   { key: 'money', label: 'Money', icon: <Banknote /> },
   { key: 'reports', label: 'Reports', shortLabel: 'Stats', icon: <BarChart3 /> },
   { key: 'team', label: 'Team', icon: <Users /> },
-  { key: 'settings', label: 'Settings', icon: <Settings /> },
+  { key: 'settings', label: 'Settings', shortLabel: 'Me', icon: <Settings /> },
 ];
 
 export default App;
